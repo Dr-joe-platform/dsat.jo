@@ -173,8 +173,6 @@ export default function TestPage() {
             const m2h: any[] = [];
             const mathM1: any[] = [];
             const mathM2h: any[] = [];
-            
-            const parsed = JSON.parse((doc as any).content);
             parsed.forEach((q: any) => {
               const formattedQ = {
                 id: q.id,
