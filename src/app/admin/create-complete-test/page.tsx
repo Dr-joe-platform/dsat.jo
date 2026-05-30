@@ -87,6 +87,7 @@ export default function CreateCompleteTestPage() {
     if (mode === 'single') {
       if (!file1) throw new Error("Missing file.");
       if (type === 'pdf') {
+        if (!groqKey) throw new Error("GROQ API key is required for PDF parsing.");
         const form = new FormData();
         form.append('file', file1);
         const res = await parsePdfToQuestions(form, groqKey);
