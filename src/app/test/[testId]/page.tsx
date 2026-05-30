@@ -13,8 +13,10 @@ import { useAuth } from '@/lib/auth-context';
 import { saveTestResult, addNotification, updateUserStats, getUserStats, completeAssignment, addBookmark, removeBookmark } from '@/lib/db';
 import 'katex/dist/katex.min.css';
 import Latex from 'react-latex-next';
+import { motion } from 'framer-motion';
 import AnnotatableText, { HighlightAnnotation, LATEX_DELIMITERS } from '@/components/AnnotatableText';
 import { Edit2, Clock, BookOpen } from 'lucide-react';
+import AIExamCharacter from '@/components/AIExamCharacter';
 
 // ──────────────────────────────────────────────
 // Bluebook-accurate module timing (minutes)
@@ -256,6 +258,7 @@ export default function TestPage() {
   const [finalScore, setFinalScore] = useState(0);
   const [mathScore, setMathScore] = useState(0);
   const [rwScore, setRwScore] = useState(0);
+  const [activeHelpsLeft, setActiveHelpsLeft] = useState(5);
 
   // Fullscreen enforcement
   useEffect(() => {
@@ -302,7 +305,8 @@ export default function TestPage() {
         moduleKey,
         currentIdx,
         cheatWarnings,
-        phase
+        phase,
+        activeHelpsLeft
       };
       localStorage.setItem(`dsat_save_${testId}`, JSON.stringify(stateToSave));
     }, 10000);
@@ -327,6 +331,7 @@ export default function TestPage() {
             setCurrentIdx(parsed.currentIdx || 0);
             setCheatWarnings(parsed.cheatWarnings || 0);
             setPhase(parsed.phase || 'testing');
+            if (parsed.activeHelpsLeft !== undefined) setActiveHelpsLeft(parsed.activeHelpsLeft);
           } catch (e) {
             console.error("Failed to restore save", e);
           }
@@ -612,7 +617,8 @@ export default function TestPage() {
               </p>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '1rem' }}>
+          <AIExamCharacter phase="intro" activeHelpsLeft={activeHelpsLeft} onRequestHelp={() => setActiveHelpsLeft(prev => prev - 1)} />
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
             <button
               onClick={() => router.back()}
               style={{ flex: 1, padding: '1rem', background: '#f1f5f9', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '0.75rem', fontWeight: '800', fontSize: '1.05rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
@@ -620,7 +626,12 @@ export default function TestPage() {
               <ChevronLeft size={18} /> Back
             </button>
             <button
-              onClick={() => { setPhase('testing'); }}
+              onClick={() => { 
+                setPhase('testing'); 
+                if (document.documentElement.requestFullscreen) {
+                  document.documentElement.requestFullscreen().catch(err => console.warn("Fullscreen error", err));
+                }
+              }}
               style={{ flex: 2, padding: '1rem', background: 'linear-gradient(135deg, #1d4ed8, #4f46e5)', color: '#fff', border: 'none', borderRadius: '0.75rem', fontWeight: '800', fontSize: '1.05rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
             >
               Start Test <ChevronRight size={18} />
@@ -1289,7 +1300,10 @@ export default function TestPage() {
 
       {/* ── CALCULATOR MODAL ── */}
       {showCalculator && (
-        <div style={{
+        <motion.div 
+          drag 
+          dragMomentum={false}
+          style={{
           position: 'fixed', top: '60px', right: '2rem', width: '400px', height: '500px',
           background: '#fff', borderRadius: '0.5rem', boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
           zIndex: 150, display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1'
@@ -1297,7 +1311,7 @@ export default function TestPage() {
           <div style={{
             padding: '0.5rem 1rem', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            borderRadius: '0.5rem 0.5rem 0 0', fontFamily: 'sans-serif'
+            borderRadius: '0.5rem 0.5rem 0 0', fontFamily: 'sans-serif', cursor: 'grab'
           }}>
             <strong style={{ fontSize: '0.875rem', color: '#0f172a' }}>Calculator</strong>
             <button onClick={() => setShowCalculator(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
@@ -1312,12 +1326,15 @@ export default function TestPage() {
               style={{ border: 'none', borderRadius: '0 0 0.5rem 0.5rem' }}
             />
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* ── REFERENCE SHEET MODAL ── */}
       {showReference && (
-        <div style={{
+        <motion.div 
+          drag 
+          dragMomentum={false}
+          style={{
           position: 'fixed', top: '60px', left: '2rem', width: '500px', height: '600px',
           background: '#fff', borderRadius: '0.5rem', boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
           zIndex: 150, display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1'
@@ -1325,7 +1342,7 @@ export default function TestPage() {
           <div style={{
             padding: '0.5rem 1rem', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            borderRadius: '0.5rem 0.5rem 0 0', fontFamily: 'sans-serif'
+            borderRadius: '0.5rem 0.5rem 0 0', fontFamily: 'sans-serif', cursor: 'grab'
           }}>
             <strong style={{ fontSize: '0.875rem', color: '#0f172a' }}>Reference</strong>
             <button onClick={() => setShowReference(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
@@ -1415,8 +1432,16 @@ export default function TestPage() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
+
+      {/* AI Assistant */}
+      <AIExamCharacter 
+        phase="testing" 
+        currentQuestion={q} 
+        activeHelpsLeft={activeHelpsLeft} 
+        onRequestHelp={() => setActiveHelpsLeft(prev => prev - 1)} 
+      />
 
       {/* Anti-Cheat Modal */}
       {showCheatModal && (
@@ -1433,6 +1458,28 @@ export default function TestPage() {
               onClick={() => setShowCheatModal(false)}
               style={{ width: '100%', padding: '1rem', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: '700', fontSize: '1.1rem', cursor: 'pointer' }}>
               I Understand - Return to Test
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Required Modal */}
+      {showFullscreenPrompt && phase === 'testing' && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', padding: '2.5rem', borderRadius: '1rem', maxWidth: '450px', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
+            <Maximize size={64} color="#3b82f6" style={{ margin: '0 auto 1.5rem' }} />
+            <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', marginBottom: '1rem' }}>Fullscreen Required</h2>
+            <p style={{ color: '#475569', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+              The exam must be taken in full-screen mode to prevent distractions. You cannot continue the test without entering full-screen.
+            </p>
+            <button 
+              onClick={() => {
+                if (document.documentElement.requestFullscreen) {
+                  document.documentElement.requestFullscreen().catch(err => console.warn(err));
+                }
+              }}
+              style={{ width: '100%', padding: '1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: '700', fontSize: '1.1rem', cursor: 'pointer' }}>
+              Enter Fullscreen
             </button>
           </div>
         </div>

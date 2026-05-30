@@ -11,6 +11,7 @@ interface Ebook {
   id: string;
   title: string;
   author: string;
+  description: string;
   subject: string;
   pages: number;
   size: string;

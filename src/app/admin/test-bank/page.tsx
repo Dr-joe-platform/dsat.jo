@@ -63,9 +63,10 @@ export default function TestBankPage() {
 
       if (file) {
         if (fileType === 'pdf') {
+          const groqKey = localStorage.getItem('groq_api_key') || undefined;
+          if (!groqKey) throw new Error("GROQ API key is required for PDF parsing.");
           const form = new FormData();
           form.append('file', file);
-          const groqKey = localStorage.getItem('groq_api_key') || undefined;
           const res = await parsePdfToQuestions(form, groqKey);
           if (!res.success || !res.data) throw new Error(res.error || "Failed to parse PDF");
           questionsContent = JSON.stringify(res.data);

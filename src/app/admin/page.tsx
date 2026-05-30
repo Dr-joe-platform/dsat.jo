@@ -482,7 +482,7 @@ export default function AdminDashboardPage() {
                     status: editStatus as AppUser['status'],
                     teacherSubject: editTeacherSub as any,
                     allowedTests: editAllowed,
-                    planId: editPlanId || null,
+                    planId: editPlanId || undefined,
                   });
                   await addActivityLog({ type: 'admin', action: 'User Edited', user: appUser?.email || 'Admin', details: `Edited ${editUser.email}`, severity: 'warn' });
                   setEditUser(null);

@@ -34,6 +34,8 @@ export interface AppUser {
   photoURL?: string;
   createdAt?: unknown;
   subject?: 'english' | 'math' | 'both'; // Used by students
+  planId?: string; // Subscription plan ID
+  planName?: string; // Subscription plan name
   teacherSubject?: 'English' | 'Math' | 'Both';
   allowedTests?: string[];
   lastActiveDate?: string;

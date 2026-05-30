@@ -70,12 +70,23 @@ export default function BlogPage() {
 
         {/* Recent Posts Grid */}
         <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', marginBottom: '1.5rem' }}>Recent Articles</h3>
+        <style>{`
+          .blog-card {
+            background: #fff;
+            border-radius: 1rem;
+            border: 1px solid #e2e8f0;
+            padding: 1.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+          }
+          .blog-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+          }
+        `}</style>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '2rem' }}>
           {blogPosts.map((post, i) => (
-            <div key={i} style={{ background: '#fff', borderRadius: '1rem', border: '1px solid #e2e8f0', padding: '1.5rem', transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-4px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 10px 25px rgba(0,0,0,0.05)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'none'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
-            >
+            <div key={i} className="blog-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#6366f1' }}>{post.category}</span>
                 <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{post.readTime}</span>

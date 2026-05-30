@@ -50,8 +50,8 @@ export default function UpgradePage() {
             {appUser?.planName ? `${appUser.planName} Plan` : 'Free — Trial Mode'}
           </div>
         </div>
-        <span style={{ background: appUser?.status === 'active' ? '#dcfce7' : '#f1f5f9', color: appUser?.status === 'active' ? '#166534' : '#475569', fontSize: '0.75rem', fontWeight: '700', padding: '0.25rem 0.75rem', borderRadius: '2rem' }}>
-          {appUser?.status === 'active' ? 'Active' : 'Pending'}
+        <span style={{ background: appUser?.status === 'approved' ? '#dcfce7' : '#f1f5f9', color: appUser?.status === 'approved' ? '#166534' : '#475569', fontSize: '0.75rem', fontWeight: '700', padding: '0.25rem 0.75rem', borderRadius: '2rem' }}>
+          {appUser?.status === 'approved' ? 'Active' : 'Pending'}
         </span>
       </div>
 
