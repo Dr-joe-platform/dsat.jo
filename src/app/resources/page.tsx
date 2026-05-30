@@ -55,10 +55,27 @@ export default function ResourcesPage() {
               <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a', marginBottom: '1rem', lineHeight: '1.3' }}>{res.title}</h3>
               <p style={{ fontSize: '0.95rem', color: '#64748b', lineHeight: '1.5', flex: 1, marginBottom: '2rem' }}>{res.desc}</p>
               
-              <Link href="/signup" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', background: '#f8fafc', color: '#0f172a', borderRadius: '0.75rem', fontWeight: '700', textDecoration: 'none', border: '1px solid #e2e8f0', transition: 'all 0.2s' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#0f172a'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#f8fafc'; (e.currentTarget as HTMLElement).style.color = '#0f172a'; }}
-              >
+              <style>{`
+                .resource-btn {
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 0.5rem;
+                  padding: 0.75rem;
+                  background: #f8fafc;
+                  color: #0f172a;
+                  border-radius: 0.75rem;
+                  font-weight: 700;
+                  text-decoration: none;
+                  border: 1px solid #e2e8f0;
+                  transition: all 0.2s;
+                }
+                .resource-btn:hover {
+                  background: #0f172a;
+                  color: #fff;
+                }
+              `}</style>
+              <Link href="/signup" className="resource-btn">
                 Unlock Download <ArrowRight size={16} />
               </Link>
             </div>
