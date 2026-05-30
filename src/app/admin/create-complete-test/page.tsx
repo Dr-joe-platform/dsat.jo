@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { PenTool, UploadCloud, Loader2, Sparkles, Database, Search, ArrowLeft, Check, Users } from 'lucide-react';
+import { PenTool, UploadCloud, Loader2, Sparkles, Database, Search, ArrowLeft, Check, Users, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { parsePdfToQuestions } from '@/app/actions/parse-pdf';
 import { createTestBank, AdminTestBank, getAllUsers, AppUser } from '@/lib/db';
@@ -115,6 +115,7 @@ export default function CreateCompleteTestPage() {
       if (!file1 || !file2) throw new Error("Please upload both files for split mode.");
       let merged: ParsedQuestion[] = [];
       if (type === 'pdf') {
+        if (!groqKey) throw new Error("GROQ API key is required for PDF parsing.");
         const form1 = new FormData(); form1.append('file', file1);
         const res1 = await parsePdfToQuestions(form1, groqKey, mod1Name);
         if (!res1.success || !res1.data) throw new Error("PDF 1 Error: " + res1.error);
