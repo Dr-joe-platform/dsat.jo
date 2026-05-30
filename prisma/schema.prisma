@@ -1,0 +1,33 @@
+datasource db {
+  provider = "sqlite"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          String    @default("USER") // USER, ADMIN
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tests         TestAttempt[]
+}
+
+model TestAttempt {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score     Int?
+  mathScore Int?
+  rwScore   Int?
+  status    String   @default("IN_PROGRESS") // COMPLETED, IN_PROGRESS
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
