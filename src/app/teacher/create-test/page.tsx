@@ -244,7 +244,7 @@ export default function CreateTestPage() {
               {file1 ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', width: '100%', maxWidth: '300px', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                    <Sparkles size={14} color="#64748b" flexShrink={0} />
+                    <Sparkles size={14} color="#64748b" style={{ flexShrink: 0 }} />
                     <span style={{ fontWeight: '600', fontSize: '0.8rem', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file1.name}</span>
                   </div>
                   <button onClick={() => setFile1(null)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}><Trash2 size={14} /></button>
@@ -262,7 +262,7 @@ export default function CreateTestPage() {
                   {file2 ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', width: '100%', maxWidth: '300px', justifyContent: 'space-between' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                        <Sparkles size={14} color="#64748b" flexShrink={0} />
+                        <Sparkles size={14} style={{ flexShrink: 0 }} color="#64748b" />
                         <span style={{ fontWeight: '600', fontSize: '0.8rem', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file2.name}</span>
                       </div>
                       <button onClick={() => setFile2(null)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}><Trash2 size={14} /></button>
@@ -303,7 +303,7 @@ export default function CreateTestPage() {
               {csvFile1 ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', width: '100%', maxWidth: '300px', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                    <Database size={14} color="#16a34a" flexShrink={0} />
+                    <Database size={14} color="#16a34a" style={{ flexShrink: 0 }} />
                     <span style={{ fontWeight: '600', fontSize: '0.8rem', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{csvFile1.name}</span>
                   </div>
                   <button onClick={() => setCsvFile1(null)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}><Trash2 size={14} /></button>
@@ -321,7 +321,7 @@ export default function CreateTestPage() {
                   {csvFile2 ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', width: '100%', maxWidth: '300px', justifyContent: 'space-between' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                        <Database size={14} color="#16a34a" flexShrink={0} />
+                        <Database size={14} color="#16a34a" style={{ flexShrink: 0 }} />
                         <span style={{ fontWeight: '600', fontSize: '0.8rem', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{csvFile2.name}</span>
                       </div>
                       <button onClick={() => setCsvFile2(null)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}><Trash2 size={14} /></button>
