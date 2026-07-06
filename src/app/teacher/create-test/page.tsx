@@ -25,7 +25,17 @@ interface ParsedQuestion {
   difficulty: 'easy' | 'medium' | 'hard';
   module?: string | number;
   imageUrl?: string;
+  explanation?: string;
+  domain?: string;
+  skill?: string;
 }
+
+const LATEX_DELIMITERS = [
+  { left: '$$', right: '$$', display: true },
+  { left: '$', right: '$', display: false },
+  { left: '\\(', right: '\\)', display: false },
+  { left: '\\[', right: '\\]', display: true }
+];
 
 export default function CreateTestPage() {
   const { appUser } = useAuth();
