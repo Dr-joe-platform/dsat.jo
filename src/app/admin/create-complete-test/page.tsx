@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { parsePdfToQuestions } from '@/app/actions/parse-pdf';
 import { createTestBank, AdminTestBank, getAllUsers, AppUser } from '@/lib/db';
 import Link from 'next/link';
-import { parseQuestionsCSV } from '@/lib/csv-parser';
+import { parseQuestionsCSV, downloadCSVTemplate } from '@/lib/csv-parser';
 
 interface ParsedQuestion {
   id: string;
@@ -192,10 +192,21 @@ export default function CreateCompleteTestPage() {
   }: any) => {
     const f1Ref = useRef<HTMLInputElement>(null);
     const f2Ref = useRef<HTMLInputElement>(null);
+    const isEnglish = title.includes('English');
     
     return (
       <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '1rem', border: '1px solid #e2e8f0', marginBottom: '1.5rem' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '1rem' }}>{title}</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0 }}>{title}</h3>
+          {type === 'csv' && (
+            <button 
+              onClick={() => downloadCSVTemplate(isEnglish ? 'English' : 'Math')}
+              style={{ padding: '0.25rem 0.75rem', background: '#e0e7ff', color: '#4f46e5', border: 'none', borderRadius: '0.25rem', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}
+            >
+              Download CSV Template
+            </button>
+          )}
+        </div>
         
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
           <select value={type} onChange={e => setType(e.target.value as any)} style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }}>
