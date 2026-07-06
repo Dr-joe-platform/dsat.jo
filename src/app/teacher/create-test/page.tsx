@@ -25,9 +25,6 @@ interface ParsedQuestion {
   difficulty: 'easy' | 'medium' | 'hard';
   module?: string | number;
   imageUrl?: string;
-  explanation?: string;
-  domain?: string;
-  skill?: string;
 }
 
 const LATEX_DELIMITERS = [
