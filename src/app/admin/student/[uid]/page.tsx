@@ -198,8 +198,8 @@ export default function AdminStudentProfile() {
                 <tbody>
                   {unsolvedTests.map(t => (
                     <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '1rem', fontWeight: '600', color: '#0f172a', fontSize: '0.85rem' }}>{t.title}</td>
-                      <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.8rem' }}>{t.category || 'General'}</td>
+                      <td style={{ padding: '1rem', fontWeight: '600', color: '#0f172a', fontSize: '0.85rem' }}>{t.name}</td>
+                      <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.8rem' }}>{t.subject || 'General'}</td>
                     </tr>
                   ))}
                 </tbody>
