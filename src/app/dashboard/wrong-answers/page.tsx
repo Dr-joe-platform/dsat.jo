@@ -186,7 +186,7 @@ export default function WrongAnswersPage() {
                   const idx = qs.findIndex((q: any) => q.id === qid);
                   if (idx !== -1) {
                     found = qs[idx];
-                    userAnswer = r.answers?.[mod]?.[idx] || r.sprAnswers?.[`spr${mod}`]?.[idx];
+                    userAnswer = (r as any).answers?.[mod]?.[idx] || (r as any).sprAnswers?.[`spr${mod}`]?.[idx];
                     break;
                   }
                 }
