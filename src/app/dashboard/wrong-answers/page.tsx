@@ -35,7 +35,8 @@ export default function WrongAnswersPage() {
     if (!wq.question) return;
     
     if (wq.question.explanation) {
-      setExplanations(prev => ({ ...prev, [wq.id]: wq.question.explanation || '' }));
+      const expl = wq.question.explanation;
+      setExplanations(prev => ({ ...prev, [wq.id]: expl }));
       return;
     }
 
