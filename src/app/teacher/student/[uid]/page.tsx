@@ -73,16 +73,16 @@ export default function TeacherStudentProfile() {
   const totalScores = results.map(r => r.totalScore).filter(s => s !== undefined);
 
   let avgTotal = 0;
-  if (appUser?.teacherSubject === 'math') {
+  if (appUser?.teacherSubject === 'Math') {
     avgTotal = mathScores.length ? Math.round((mathScores.reduce((a, b) => a + b, 0) / mathScores.length) / 10) * 10 : 0;
-  } else if (appUser?.teacherSubject === 'english') {
+  } else if (appUser?.teacherSubject === 'English') {
     avgTotal = englishScores.length ? Math.round((englishScores.reduce((a, b) => a + b, 0) / englishScores.length) / 10) * 10 : 0;
   } else {
     avgTotal = totalScores.length ? Math.round((totalScores.reduce((a, b) => a + b, 0) / totalScores.length) / 10) * 10 : 0;
   }
 
   // Predict next score
-  const scoresToUse = appUser?.teacherSubject === 'math' ? mathScores : appUser?.teacherSubject === 'english' ? englishScores : totalScores;
+  const scoresToUse = appUser?.teacherSubject === 'Math' ? mathScores : appUser?.teacherSubject === 'English' ? englishScores : totalScores;
   const rawPredictedScore = scoresToUse.length > 0 ? (scoresToUse[scoresToUse.length - 1] + avgTotal) / 2 : 0;
   const predictedScore = Math.round(rawPredictedScore / 10) * 10;
 
@@ -160,7 +160,7 @@ export default function TeacherStudentProfile() {
                 <tbody>
                   {results.sort((a, b) => (b.completedAt?.seconds || 0) - (a.completedAt?.seconds || 0)).map((r, idx) => {
                     const dateObj = r.completedAt?.toDate ? r.completedAt.toDate() : r.completedAt?.seconds ? new Date(r.completedAt.seconds * 1000) : new Date(r.completedAt as any);
-                    const relevantScore = appUser?.teacherSubject === 'math' ? r.totalMathScore : appUser?.teacherSubject === 'english' ? r.totalEnglishScore : r.totalScore;
+                    const relevantScore = appUser?.teacherSubject === 'Math' ? r.totalMathScore : appUser?.teacherSubject === 'English' ? r.totalEnglishScore : r.totalScore;
                     return (
                       <tr key={r.id || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '1rem', fontWeight: '600', color: '#0f172a', fontSize: '0.85rem' }}>{r.testName || r.testId}</td>
