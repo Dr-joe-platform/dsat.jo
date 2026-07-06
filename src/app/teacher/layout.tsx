@@ -55,10 +55,18 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
       }}>
         <div style={{ padding: collapsed ? '1rem 0' : '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', borderBottom: '1px solid #f1f5f9', minHeight: '60px' }}>
           {!collapsed && (
-            <div>
-              <div style={{ fontSize: '0.6rem', fontWeight: '800', color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Teacher Panel</div>
-              <div style={{ fontSize: '1rem', fontWeight: '900', color: '#0f172a' }}>DSAT.JO</div>
-              <div style={{ fontSize: '0.65rem', fontWeight: '600', color: '#3b82f6', marginTop: '0.125rem' }}>{teacherSubject} Teacher</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #6d28d9, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '800', fontSize: '0.8rem', flexShrink: 0, overflow: 'hidden' }}>
+                {appUser.photoURL ? (
+                  <img src={appUser.photoURL} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  (appUser.displayName || 'T')[0].toUpperCase()
+                )}
+              </div>
+              <div>
+                <div style={{ fontSize: '0.6rem', fontWeight: '800', color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Teacher Panel</div>
+                <div style={{ fontSize: '1rem', fontWeight: '900', color: '#0f172a' }}>DSAT.JO</div>
+              </div>
             </div>
           )}
           <button onClick={() => setCollapsed(!collapsed)} style={{ width: '26px', height: '26px', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}>

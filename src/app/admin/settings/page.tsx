@@ -2,17 +2,54 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { Settings, User, Phone, Shield, Lock, Loader2, Mail } from 'lucide-react';
+import { Settings, User, Phone, Shield, Lock, Loader2, Mail, Camera } from 'lucide-react';
 import { updateUser } from '@/lib/db';
+import { updateProfile } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 export default function AdminSettingsPage() {
   const { appUser, resetPassword } = useAuth();
   const [name, setName] = useState(appUser?.displayName || '');
   const [phone, setPhone] = useState(appUser?.phone || '');
+  const [photoURL, setPhotoURL] = useState(appUser?.photoURL || '');
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   if (!appUser) return null;
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !appUser?.uid) return;
+
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const res = await fetch(`/api/upload-image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || "Unknown Error");
+      }
+
+      const url = data.url;
+      setPhotoURL(url);
+      
+      await updateUser(appUser.uid, { photoURL: url });
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { photoURL: url });
+      }
+    } catch (err: any) {
+      console.error("Failed to upload image", err);
+      alert(err.message || "Failed to upload image. Please try again.");
+    }
+    setUploadingImage(false);
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +79,21 @@ export default function AdminSettingsPage() {
           <User size={18} color="#64748b" /> Profile Details
         </h2>
 
+        {/* Profile card preview */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'linear-gradient(135deg, #38bdf8, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '900', fontSize: '1.5rem', overflow: 'hidden' }}>
+            {photoURL || appUser?.photoURL ? (
+              <img src={photoURL || appUser?.photoURL} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              (appUser?.displayName || 'A')[0].toUpperCase()
+            )}
+          </div>
+          <div>
+            <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '1.125rem' }}>{name || appUser?.displayName}</div>
+            <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{appUser?.email}</div>
+          </div>
+        </div>
+
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
             <div>
@@ -57,6 +109,21 @@ export default function AdminSettingsPage() {
                 <Phone size={14} color="#94a3b8" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
                 <input value={phone} onChange={e => setPhone(e.target.value)} className="input-field" style={{ paddingLeft: '2.5rem' }} placeholder="+1 234 567 890" />
               </div>
+            </div>
+          </div>
+
+          {/* Photo Upload */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#475569', marginBottom: '0.375rem' }}>Profile Image</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <label style={{ cursor: uploadingImage ? 'wait' : 'pointer', padding: '0.625rem 1.25rem', background: '#f1f5f9', color: '#0f172a', borderRadius: '0.5rem', fontSize: '0.875rem', fontWeight: '600', border: '1px solid #e2e8f0', transition: 'background 0.2s', opacity: uploadingImage ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                     onMouseOver={e => !uploadingImage && (e.currentTarget.style.background = '#e2e8f0')}
+                     onMouseOut={e => !uploadingImage && (e.currentTarget.style.background = '#f1f5f9')}>
+                <Camera size={14} />
+                {uploadingImage ? 'Uploading...' : 'Upload Image'}
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} disabled={uploadingImage} />
+              </label>
+              {photoURL && !uploadingImage && <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: '600' }}>Image uploaded!</span>}
             </div>
           </div>
 

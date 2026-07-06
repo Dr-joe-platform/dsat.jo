@@ -90,8 +90,24 @@ export default function AIExamCharacter({ phase, currentQuestion, activeHelpsLef
   if (phase === 'intro') {
     return (
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.5rem', marginTop: '2rem', padding: '1.5rem', background: '#f8fafc', borderRadius: '1rem', border: '1px solid #e2e8f0' }}>
-        <div style={{ width: '80px', height: '80px', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%' }}>
-          <Bot size={40} color="#4338ca" />
+        <div style={{ position: 'relative', width: '90px', height: '90px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          {/* Orbital Math Symbols */}
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
+            style={{ position: 'absolute', width: '100%', height: '100%', borderRadius: '50%', border: '1px dashed rgba(99, 102, 241, 0.4)' }}
+          >
+            <div style={{ position: 'absolute', top: '-8px', left: '50%', transform: 'translateX(-50%) rotate(0deg)', color: '#6366f1', fontWeight: 'bold', fontSize: '1rem' }}>∑</div>
+            <div style={{ position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%) rotate(180deg)', color: '#8b5cf6', fontWeight: 'bold', fontSize: '1rem' }}>π</div>
+            <div style={{ position: 'absolute', left: '-8px', top: '50%', transform: 'translateY(-50%) rotate(-90deg)', color: '#ec4899', fontWeight: 'bold', fontSize: '1rem' }}>√</div>
+            <div style={{ position: 'absolute', right: '-8px', top: '50%', transform: 'translateY(-50%) rotate(90deg)', color: '#3b82f6', fontWeight: 'bold', fontSize: '1rem' }}>∫</div>
+          </motion.div>
+
+          <div style={{ position: 'relative', zIndex: 1, width: '64px', height: '64px', background: 'linear-gradient(135deg, #4f46e5, #9333ea)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '3px solid #fff', boxShadow: '0 4px 15px rgba(79, 70, 229, 0.3)' }}>
+            <motion.div animate={{ y: [0, -2, 0] }} transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}>
+              <Bot size={32} color="#fff" strokeWidth={1.5} />
+            </motion.div>
+          </div>
         </div>
         <div style={{ flex: 1, position: 'relative', background: '#fff', padding: '1.25rem', borderRadius: '1rem', borderTopLeftRadius: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
           {/* Speech bubble arrow */}
@@ -131,12 +147,33 @@ export default function AIExamCharacter({ phase, currentQuestion, activeHelpsLef
               setIsOpen(true);
             }
           }}
-          style={{ width: '90px', height: '90px', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'grab', transition: 'transform 0.2s' }}
+          style={{ width: '100px', height: '100px', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'grab', transition: 'transform 0.2s', position: 'relative' }}
           onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05) translateY(-5px)'}
           onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
         >
-          <div style={{ pointerEvents: 'none', width: '90px', height: '90px', background: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '4px solid #fff', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-            <Bot size={45} color="#4338ca" />
+          {/* Orbital Math Symbols */}
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+            style={{ position: 'absolute', width: '100%', height: '100%', borderRadius: '50%', border: '1px dashed rgba(99, 102, 241, 0.3)' }}
+          >
+            <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%) rotate(0deg)', color: '#6366f1', fontWeight: 'bold', fontSize: '1.2rem', textShadow: '0 0 8px rgba(99,102,241,0.6)' }}>∑</div>
+            <div style={{ position: 'absolute', bottom: '-10px', left: '50%', transform: 'translateX(-50%) rotate(180deg)', color: '#8b5cf6', fontWeight: 'bold', fontSize: '1.2rem', textShadow: '0 0 8px rgba(139,92,246,0.6)' }}>π</div>
+            <div style={{ position: 'absolute', left: '-10px', top: '50%', transform: 'translateY(-50%) rotate(-90deg)', color: '#ec4899', fontWeight: 'bold', fontSize: '1.2rem', textShadow: '0 0 8px rgba(236,72,153,0.6)' }}>√</div>
+            <div style={{ position: 'absolute', right: '-10px', top: '50%', transform: 'translateY(-50%) rotate(90deg)', color: '#3b82f6', fontWeight: 'bold', fontSize: '1.2rem', textShadow: '0 0 8px rgba(59,130,246,0.6)' }}>∫</div>
+          </motion.div>
+
+          {/* Glowing pulse effect */}
+          <motion.div
+            animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0, 0.3] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            style={{ position: 'absolute', width: '70%', height: '70%', background: 'radial-gradient(circle, #8b5cf6 0%, transparent 70%)', borderRadius: '50%', zIndex: 0 }}
+          />
+
+          <div style={{ position: 'relative', zIndex: 1, pointerEvents: 'none', width: '70px', height: '70px', background: 'linear-gradient(135deg, #4f46e5, #9333ea)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '3px solid #fff', boxShadow: '0 4px 20px rgba(79, 70, 229, 0.4)' }}>
+            <motion.div animate={{ y: [0, -3, 0] }} transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}>
+              <Bot size={35} color="#fff" strokeWidth={1.5} />
+            </motion.div>
           </div>
         </div>
       </motion.div>
@@ -152,8 +189,10 @@ export default function AIExamCharacter({ phase, currentQuestion, activeHelpsLef
       {/* Header */}
       <div style={{ padding: '1rem', background: 'linear-gradient(135deg, #1e293b, #0f172a)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#fff' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}>
-            <Bot size={24} color="#fff" />
+          <div style={{ position: 'relative', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #4f46e5, #9333ea)', borderRadius: '50%', boxShadow: '0 2px 10px rgba(79, 70, 229, 0.5)' }}>
+            <motion.div animate={{ rotate: [0, 5, -5, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}>
+              <Bot size={22} color="#fff" strokeWidth={1.5} />
+            </motion.div>
           </div>
           <div>
             <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>AI Assistant</div>

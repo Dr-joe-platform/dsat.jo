@@ -52,9 +52,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }}>
         <div style={{ padding: collapsed ? '1rem 0' : '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', borderBottom: '1px solid rgba(255,255,255,0.08)', minHeight: '60px' }}>
           {!collapsed && (
-            <div>
-              <div style={{ fontSize: '0.6rem', fontWeight: '800', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Admin Panel</div>
-              <div style={{ fontSize: '1rem', fontWeight: '900', color: '#ffffff' }}>DSAT.JO</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #38bdf8, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '800', fontSize: '0.8rem', flexShrink: 0, overflow: 'hidden' }}>
+                {appUser.photoURL ? (
+                  <img src={appUser.photoURL} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  (appUser.displayName || 'A')[0].toUpperCase()
+                )}
+              </div>
+              <div>
+                <div style={{ fontSize: '0.6rem', fontWeight: '800', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Admin Panel</div>
+                <div style={{ fontSize: '1rem', fontWeight: '900', color: '#ffffff' }}>DSAT.JO</div>
+              </div>
             </div>
           )}
           <button onClick={() => setCollapsed(!collapsed)} style={{ width: '26px', height: '26px', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.6)' }}>

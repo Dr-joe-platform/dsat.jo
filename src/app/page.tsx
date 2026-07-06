@@ -56,12 +56,12 @@ const defaultPlans = [
     name: "Elite",
     price: "$29.99",
     period: "Monthly",
-    desc: "1-on-1 AI tutoring & deep analytics.",
+    desc: "1-on-1 tutoring & deep analytics.",
     cta: "Get Elite",
     popular: false,
     features: [
       "Everything in Pro",
-      "Real-time AI Chat Tutor",
+      "Real-time Chat Support",
       "Custom Study Schedules",
       "Essay Grading (Beta)",
     ],
@@ -69,9 +69,9 @@ const defaultPlans = [
 ];
 
 const testimonials = [
-  { name: "Sarah J.", score: "1580", quote: "The AI engine is terrifyingly accurate. It found weaknesses I didn't even know I had and drilled them until I couldn't get them wrong." },
-  { name: "Michael T.", score: "1540", quote: "I was stuck at 1420 for months using Khan Academy. Two weeks with this AI and I broke 1500. The Hard tier questions are brutal." },
-  { name: "Emily R.", score: "1590", quote: "Stop wasting time on easy questions. If you want a top 1% score, this is the only AI platform that pushes you past your limits." },
+  { name: "Sarah J.", score: "1580", quote: "The platform is incredibly accurate. It found weaknesses I didn't even know I had and drilled them until I couldn't get them wrong." },
+  { name: "Michael T.", score: "1540", quote: "I was stuck at 1420 for months using Khan Academy. Two weeks with this platform and I broke 1500. The Hard tier questions are brutal." },
+  { name: "Emily R.", score: "1590", quote: "Stop wasting time on easy questions. If you want a top 1% score, this is the only platform that pushes you past your limits." },
 ];
 
 export default function Home() {
@@ -105,15 +105,6 @@ export default function Home() {
 
         <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
           
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }} 
-            animate={{ opacity: 1, scale: 1 }} 
-            transition={{ duration: 0.6, ease: "easeOut" }} 
-            className={styles.heroBadge}
-          >
-            <Activity size={14} color="#3b82f6" /> THE SAT PREPARATORY STANDARD
-          </motion.div>
-          
           <motion.h1 
             initial={{ opacity: 0, y: 30 }} 
             animate={{ opacity: 1, y: 0 }} 
@@ -129,7 +120,7 @@ export default function Home() {
             transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }} 
             className={styles.heroDescription}
           >
-            No generic advice. No fluff. Just the hardest questions and a glowing analytics engine that exposes exactly why you're failing.
+            No generic advice. No fluff. Just the hardest questions and an analytics engine that exposes exactly why you're failing.
           </motion.p>
 
           <motion.div 
@@ -255,13 +246,13 @@ export default function Home() {
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className={styles.deepDiveContent}
           >
-            <div className={styles.deepDiveLabel}><Cpu size={14} style={{ display: 'inline', marginRight: '6px', marginBottom: '-2px' }} /> Neural Core</div>
-            <h2 className={styles.deepDiveTitle}>AI that exposes your blind spots.</h2>
+            <div className={styles.deepDiveLabel}><Target size={14} style={{ display: 'inline', marginRight: '6px', marginBottom: '-2px' }} /> Analytics Core</div>
+            <h2 className={styles.deepDiveTitle}>Analytics that expose your blind spots.</h2>
             <p className={styles.deepDiveDesc}>
-              Stop doing 100 random math questions. Our proprietary AI tracks every micro-interaction, identifies the root sub-skill of your mistakes, and generates a personalized attack plan. We map your neural pathways to learning.
+              Stop doing 100 random math questions. Our proprietary system tracks every micro-interaction, identifies the root sub-skill of your mistakes, and generates a personalized attack plan. We map your pathway to learning.
             </p>
             <div className={styles.deepDiveList}>
-              {['Real-time cognitive tracking', 'Predictive score modeling', 'Adaptive difficulty scaling', 'Weakness isolation algorithms'].map((item, i) => (
+              {['Real-time cognitive tracking', 'Predictive score modeling', 'Adaptive difficulty scaling', 'Weakness isolation'].map((item, i) => (
                 <div key={i} className={styles.deepDiveListItem}>
                   <Shield size={18} color="#3b82f6" /> {item}
                 </div>
@@ -308,13 +299,13 @@ export default function Home() {
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className={styles.deepDiveContent}
           >
-            <div className={styles.deepDiveLabel} style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)' }}><BookOpen size={14} style={{ display: 'inline', marginRight: '6px', marginBottom: '-2px' }} /> Generative Content</div>
-            <h2 className={styles.deepDiveTitle}>Machine-generated brutality.</h2>
+            <div className={styles.deepDiveLabel} style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)' }}><BookOpen size={14} style={{ display: 'inline', marginRight: '6px', marginBottom: '-2px' }} /> Dynamic Content</div>
+            <h2 className={styles.deepDiveTitle}>Dynamic, high-yield questions.</h2>
             <p className={styles.deepDiveDesc}>
-              The actual DSAT is full of tricks. We trained our AI on every released College Board exam to generate infinite permutations of high-yield questions. No two practice sessions are the same.
+              The actual DSAT is full of tricks. We analyzed every released College Board exam to provide dynamic permutations of high-yield questions. No two practice sessions are the same.
             </p>
             <div className={styles.deepDiveList}>
-              {['Infinite generative question bank', 'Dynamic distracter generation', 'Real-time Bluebook simulation', 'Logic-based AI explanations'].map((item, i) => (
+              {['Massive question bank', 'Dynamic distracter generation', 'Real-time Bluebook simulation', 'Detailed step-by-step explanations'].map((item, i) => (
                 <div key={i} className={styles.deepDiveListItem}>
                   <Check size={18} color="#10b981" /> {item}
                 </div>
@@ -344,7 +335,7 @@ export default function Home() {
                   initial={{ width: 0 }} animate={{ width: '90%' }} transition={{ duration: 1.8, repeat: Infinity, repeatType: "reverse", delay: 0.4 }} 
                 />
                 <div style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <motion.div whileHover={{ scale: 1.05 }} className={styles.aiOptionGreen}>Option A (Generated)</motion.div>
+                  <motion.div whileHover={{ scale: 1.05 }} className={styles.aiOptionGreen}>Option A</motion.div>
                   <motion.div whileHover={{ scale: 1.05 }} className={styles.aiOptionDark}>Option B</motion.div>
                 </div>
               </div>
@@ -508,32 +499,30 @@ export default function Home() {
           <div className={styles.footerTop}>
             <div className={styles.footerBrand}>
               <div className={styles.footerLogo}>DSAT.JO</div>
-              <div className={styles.footerSlogan}>The Baseline is 1500. Powered by Advanced AI.</div>
+              <div className={styles.footerSlogan}>The Baseline is 1500.</div>
+              <div style={{ marginTop: '1.5rem', color: '#71717a', fontSize: '0.85rem' }}>
+                © {new Date().getFullYear()} DSAT.JO. All rights reserved.
+              </div>
             </div>
             
             <div className={styles.footerNavGrid}>
               <div className={styles.footerNavCol}>
                 <h4>Platform</h4>
-                <Link href="#">Analytics</Link>
-                <Link href="#">Generative Bank</Link>
-                <Link href="#">Pricing</Link>
+                <Link href="#methodology">Analytics</Link>
+                <Link href="#methodology">Question Bank</Link>
+                <Link href="#pricing">Pricing</Link>
               </div>
               <div className={styles.footerNavCol}>
                 <h4>Company</h4>
-                <Link href="#">About</Link>
-                <Link href="#">Contact</Link>
-                <Link href="#">Careers</Link>
+                <Link href="/about">About</Link>
+                <Link href="https://wa.me/201114436085" target="_blank" rel="noopener noreferrer">Contact</Link>
               </div>
               <div className={styles.footerNavCol}>
                 <h4>Legal</h4>
-                <Link href="#">Terms of Service</Link>
-                <Link href="#">Privacy Policy</Link>
+                <Link href="/terms">Terms of Service</Link>
+                <Link href="/privacy">Privacy Policy</Link>
               </div>
             </div>
-          </div>
-          
-          <div className={styles.footerBottom}>
-            <span>© {new Date().getFullYear()} DSAT.JO. All rights reserved.</span>
           </div>
         </div>
       </footer>

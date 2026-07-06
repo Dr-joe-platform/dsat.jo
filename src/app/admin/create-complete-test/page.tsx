@@ -48,6 +48,21 @@ export default function CreateCompleteTestPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudents, setSelectedStudents] = useState<string[]>(['all']);
 
+  // Modules Config
+  const [modulesConfig, setModulesConfig] = useState({
+    M1: { questions: 27, time: 32 },
+    M2: { questions: 27, time: 32 },
+    MATH_M1: { questions: 22, time: 35 },
+    MATH_M2: { questions: 22, time: 35 }
+  });
+
+  const handleConfigChange = (mod: string, field: 'questions' | 'time', value: number) => {
+    setModulesConfig(prev => ({
+      ...prev,
+      [mod]: { ...prev[mod as keyof typeof prev], [field]: value }
+    }));
+  };
+
   useEffect(() => {
     getAllUsers().then(users => {
       setStudents(users.filter(u => u.role === 'student'));
@@ -170,7 +185,8 @@ export default function CreateCompleteTestPage() {
         isPublic: selectedStudents.includes('all'),
         createdBy: appUser?.uid,
         visibleTo: selectedStudents.includes('all') ? 'all' : selectedStudents,
-        content: JSON.stringify(allQs)
+        content: JSON.stringify(allQs),
+        modulesConfig
       };
 
       await createTestBank(testData);
@@ -274,7 +290,68 @@ export default function CreateCompleteTestPage() {
         </div>
 
         <FileUploader title="English Section (Reading & Writing)" mode={engMode} setMode={setEngMode} type={engType} setType={setEngType} file1={engFile1} setFile1={setEngFile1} file2={engFile2} setFile2={setEngFile2} />
+        
+        {/* English Module Settings */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem', padding: '1.5rem', background: '#f8fafc', borderRadius: '1rem', border: '1px solid #e2e8f0' }}>
+          <div>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: '700', marginBottom: '0.75rem', color: '#0f172a' }}>English Module 1</h4>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Questions</label>
+                <input type="number" min={1} value={modulesConfig.M1.questions} onChange={e => handleConfigChange('M1', 'questions', parseInt(e.target.value) || 27)} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Time (Minutes)</label>
+                <input type="number" min={1} value={modulesConfig.M1.time} onChange={e => handleConfigChange('M1', 'time', parseInt(e.target.value) || 32)} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: '700', marginBottom: '0.75rem', color: '#0f172a' }}>English Module 2</h4>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Questions</label>
+                <input type="number" min={1} value={modulesConfig.M2.questions} onChange={e => handleConfigChange('M2', 'questions', parseInt(e.target.value) || 27)} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Time (Minutes)</label>
+                <input type="number" min={1} value={modulesConfig.M2.time} onChange={e => handleConfigChange('M2', 'time', parseInt(e.target.value) || 32)} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+              </div>
+            </div>
+          </div>
+        </div>
+
         <FileUploader title="Math Section" mode={mathMode} setMode={setMathMode} type={mathType} setType={setMathType} file1={mathFile1} setFile1={setMathFile1} file2={mathFile2} setFile2={setMathFile2} />
+
+        {/* Math Module Settings */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem', padding: '1.5rem', background: '#f8fafc', borderRadius: '1rem', border: '1px solid #e2e8f0' }}>
+          <div>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: '700', marginBottom: '0.75rem', color: '#0f172a' }}>Math Module 1</h4>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Questions</label>
+                <input type="number" min={1} value={modulesConfig.MATH_M1.questions} onChange={e => handleConfigChange('MATH_M1', 'questions', parseInt(e.target.value) || 22)} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Time (Minutes)</label>
+                <input type="number" min={1} value={modulesConfig.MATH_M1.time} onChange={e => handleConfigChange('MATH_M1', 'time', parseInt(e.target.value) || 35)} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: '700', marginBottom: '0.75rem', color: '#0f172a' }}>Math Module 2</h4>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Questions</label>
+                <input type="number" min={1} value={modulesConfig.MATH_M2.questions} onChange={e => handleConfigChange('MATH_M2', 'questions', parseInt(e.target.value) || 22)} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Time (Minutes)</label>
+                <input type="number" min={1} value={modulesConfig.MATH_M2.time} onChange={e => handleConfigChange('MATH_M2', 'time', parseInt(e.target.value) || 35)} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Audience Selector */}
         <div style={{ marginTop: '2rem' }}>

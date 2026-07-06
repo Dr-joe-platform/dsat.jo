@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { getTeacherClasses, getUsersByIds, getAllResults, AppUser, TestResult, createAssignment, addNotification, AdminTestBank, ClassModel, ensureTeacherCode } from '@/lib/db';
+import { getTeacherClasses, getTeacherStudents, getAllResults, AppUser, TestResult, createAssignment, addNotification, AdminTestBank, ClassModel, ensureTeacherCode, getTestBanks } from '@/lib/db';
 import { filterStudentsBySubject, filterItemsBySubject, filterResultsBySubject } from '@/lib/subject-filter';
 import { Users, PenTool, TrendingUp, Clock, Flame, ArrowUpRight, RefreshCw, Loader2, Phone, MessageCircle, Send, X, Database, BookOpen, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
@@ -36,14 +36,7 @@ export default function TeacherDashboardPage() {
       ]);
       setTeacherCode(tCode);
       
-      // Extract all unique student IDs from all classes
-      const studentIds = new Set<string>();
-      teacherCls.forEach(c => c.studentIds?.forEach(id => studentIds.add(id)));
-      
-      const studs = await getUsersByIds(Array.from(studentIds));
-      
-      // ── Subject Isolation: only show students matching this teacher's subject ──
-      const filteredStuds = filterStudentsBySubject(studs as any, appUser.teacherSubject);
+      const studs = await getTeacherStudents(appUser.uid, appUser.teacherSubject);
       
       // ── Subject Isolation: only show tests for this teacher's subject ──
       const filteredBanks = banks
@@ -51,7 +44,7 @@ export default function TeacherDashboardPage() {
         .filter(b => filterItemsBySubject([b] as any, appUser.teacherSubject).length > 0);
 
       setClasses(teacherCls);
-      setStudents(filteredStuds as any);
+      setStudents(studs);
       setResults(res);
       setTeacherTests(filteredBanks);
     } catch { /* Firestore not seeded yet */ }
@@ -217,15 +210,17 @@ export default function TeacherDashboardPage() {
                         onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
                       >
                         <td style={{ padding: '1rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '800', fontSize: '0.8rem', flexShrink: 0 }}>
-                              {(s.displayName || s.email || '?')[0].toUpperCase()}
+                          <Link href={`/teacher/student/${s.uid}`} style={{ textDecoration: 'none' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '800', fontSize: '0.8rem', flexShrink: 0 }}>
+                                {(s.displayName || s.email || '?')[0].toUpperCase()}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: '600', color: '#0f172a', fontSize: '0.875rem' }}>{s.displayName || '—'}</div>
+                                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{myResults.length} tests taken</div>
+                              </div>
                             </div>
-                            <div>
-                              <div style={{ fontWeight: '600', color: '#0f172a', fontSize: '0.875rem' }}>{s.displayName || '—'}</div>
-                              <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{myResults.length} tests taken</div>
-                            </div>
-                          </div>
+                          </Link>
                         </td>
                         <td style={{ padding: '1rem', minWidth: '100px' }}>
                           {myResults.length > 0 ? (

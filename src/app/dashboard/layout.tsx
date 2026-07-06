@@ -482,9 +482,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           {/* User avatar */}
-          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer' }}
+          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer', overflow: 'hidden' }}
             onClick={() => router.push('/dashboard/settings')}>
-            {(appUser.displayName || 'S')[0].toUpperCase()}
+            {appUser.photoURL ? (
+              <img src={appUser.photoURL} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              (appUser.displayName || 'S')[0].toUpperCase()
+            )}
           </div>
         </div>
 

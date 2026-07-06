@@ -5,13 +5,14 @@ import { useAuth } from '@/lib/auth-context';
 import { updateUserProfile } from '@/lib/db';
 import { updateProfile } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { Save, Check, User, Phone, Key, BookOpen } from 'lucide-react';
+import { Save, Check, User, Phone, Key, BookOpen, Camera } from 'lucide-react';
 
 export default function SettingsPage() {
   const { appUser } = useAuth();
-  const [form, setForm] = useState({ displayName: '', phone: '', parentPhone: '', teacherCode: '' });
+  const [form, setForm] = useState({ displayName: '', phone: '', parentPhone: '', teacherCode: '', photoURL: '' });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -21,9 +22,44 @@ export default function SettingsPage() {
         phone: appUser.phone ?? '',
         parentPhone: appUser.parentPhone ?? '',
         teacherCode: appUser.teacherCode ?? '',
+        photoURL: appUser.photoURL ?? '',
       });
     }
   }, [appUser]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !appUser?.uid) return;
+
+    setUploadingImage(true);
+    setError('');
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const res = await fetch(`/api/upload-image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || "Unknown Error");
+      }
+
+      const url = data.url;
+      setForm(prev => ({ ...prev, photoURL: url }));
+      
+      await updateUserProfile(appUser.uid, { photoURL: url });
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { photoURL: url });
+      }
+    } catch (err: any) {
+      console.error("Failed to upload image", err);
+      setError(err.message || "Failed to upload image. Please try again.");
+    }
+    setUploadingImage(false);
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,9 +72,10 @@ export default function SettingsPage() {
         phone: form.phone,
         parentPhone: form.parentPhone,
         teacherCode: form.teacherCode,
+        photoURL: form.photoURL,
       });
       if (auth.currentUser) {
-        await updateProfile(auth.currentUser, { displayName: form.displayName });
+        await updateProfile(auth.currentUser, { displayName: form.displayName, photoURL: form.photoURL });
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -58,8 +95,12 @@ export default function SettingsPage() {
       {/* Profile card */}
       <div className="stat-card" style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '900', fontSize: '1.375rem' }}>
-            {(appUser?.displayName || 'S')[0].toUpperCase()}
+          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '900', fontSize: '1.375rem', overflow: 'hidden' }}>
+            {form.photoURL || appUser?.photoURL ? (
+              <img src={form.photoURL || appUser?.photoURL} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              (appUser?.displayName || 'S')[0].toUpperCase()
+            )}
           </div>
           <div>
             <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '1rem' }}>{appUser?.displayName}</div>
@@ -92,6 +133,22 @@ export default function SettingsPage() {
               onFocus={e => (e.target as HTMLElement).style.borderColor = '#6366f1'}
               onBlur={e => (e.target as HTMLElement).style.borderColor = '#e2e8f0'}
             />
+          </div>
+
+          {/* Photo Upload */}
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.78rem', fontWeight: '700', color: '#475569', marginBottom: '0.375rem' }}>
+              <Camera size={13} /> Profile Image
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <label style={{ cursor: uploadingImage ? 'wait' : 'pointer', padding: '0.5rem 1rem', background: '#f1f5f9', color: '#0f172a', borderRadius: '0.5rem', fontSize: '0.875rem', fontWeight: '600', border: '1px solid #e2e8f0', transition: 'background 0.2s', opacity: uploadingImage ? 0.5 : 1 }}
+                     onMouseOver={e => !uploadingImage && (e.currentTarget.style.background = '#e2e8f0')}
+                     onMouseOut={e => !uploadingImage && (e.currentTarget.style.background = '#f1f5f9')}>
+                {uploadingImage ? 'Uploading...' : 'Upload Image'}
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} disabled={uploadingImage} />
+              </label>
+              {form.photoURL && !uploadingImage && <span style={{ fontSize: '0.8rem', color: '#10b981' }}>Image uploaded!</span>}
+            </div>
           </div>
 
           {/* Phone */}

@@ -133,15 +133,39 @@ export async function getTeacherStudents(
   teacherId: string,
   teacherSubject?: AppUser['teacherSubject']
 ): Promise<AppUser[]> {
-  const classes = await getTeacherClasses(teacherId);
-  const studentIds = Array.from(new Set(classes.flatMap(c => c.studentIds || [])));
-  if (studentIds.length === 0) return [];
+  const teacherDoc = await getDoc(doc(db, 'users', teacherId));
+  const tData = teacherDoc.exists() ? (teacherDoc.data() as AppUser) : null;
+  const teacherCode = tData?.teacherCode;
 
-  const users = await getUsersByIds(studentIds);
-  return filterStudentsBySubject(
-    users.filter(u => u.role === 'student' && u.status !== 'rejected'),
-    teacherSubject
-  );
+  const classes = await getTeacherClasses(teacherId);
+  const classStudentIds = Array.from(new Set(classes.flatMap(c => c.studentIds || [])));
+
+  const allUsers = await getAllUsers();
+  
+  const students = allUsers.filter(u => {
+    if (u.role !== 'student' || u.status === 'rejected') return false;
+    
+    // In a class
+    if (classStudentIds.includes(u.uid)) return true;
+    
+    // Has teacher code
+    if (teacherCode) {
+      const normalizedTeacherCode = teacherCode.toLowerCase().trim();
+      const uTeacherCode = u.teacherCode?.toLowerCase().trim();
+      const uReferredBy = (u as any).referredBy?.toLowerCase().trim();
+      const uTeacherCodes = u.teacherCodes?.map(c => c.toLowerCase().trim()) || [];
+      
+      if (uTeacherCodes.includes(normalizedTeacherCode) || 
+          uTeacherCode === normalizedTeacherCode || 
+          uReferredBy === normalizedTeacherCode) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+
+  return filterStudentsBySubject(students, teacherSubject);
 }
 
 /** Update user role/status (admin) */
@@ -464,6 +488,39 @@ export async function addNotification(data: Omit<Notification, 'id' | 'createdAt
   });
 }
 
+export async function notifyStudentsForNewTest(testName: string, visibleTo: string[] | 'all', assignerName: string = 'Your Teacher') {
+  if (!visibleTo || (Array.isArray(visibleTo) && visibleTo.length === 0)) return;
+
+  const title = '📝 New Test Available';
+  const message = `${assignerName} granted you access to a new test: ${testName}.`;
+  
+  if (visibleTo === 'all') {
+    const allUsers = await getAllUsers();
+    const students = allUsers.filter(u => u.role === 'student' || (u.role as string) === 'trial');
+    for (const student of students) {
+      await addNotification({
+        userId: student.uid,
+        type: 'test_assigned',
+        title,
+        message,
+        isRead: false,
+        link: '/dashboard/practice',
+      });
+    }
+  } else if (Array.isArray(visibleTo)) {
+    for (const uid of visibleTo) {
+      await addNotification({
+        userId: uid,
+        type: 'test_assigned',
+        title,
+        message,
+        isRead: false,
+        link: '/dashboard/practice',
+      });
+    }
+  }
+}
+
 // ─── Save Test Result ─────────────────────────────────────────────────────────
 
 export async function saveTestResult(result: Omit<TestResult, 'id' | 'completedAt'>): Promise<string> {
@@ -642,6 +699,12 @@ export interface AdminTestBank {
   visibleTo?: 'all' | string[];
   isMiniQuiz?: boolean;
   customTime?: number;
+  modulesConfig?: {
+    M1?: { time: number, questions: number },
+    M2?: { time: number, questions: number },
+    MATH_M1?: { time: number, questions: number },
+    MATH_M2?: { time: number, questions: number }
+  };
 }
 
 export async function getTestBanks(userId?: string, role?: string, subject?: string): Promise<AdminTestBank[]> {
@@ -701,6 +764,10 @@ export async function createTestBank(data: Omit<AdminTestBank, 'id' | 'createdAt
     ...data,
     createdAt: serverTimestamp(),
   });
+
+  if (data.visibleTo) {
+    await notifyStudentsForNewTest(data.name, data.visibleTo, data.teacherName || 'Admin');
+  }
 }
 
 // ─── Classes ─────────────────────────────────────────────────────────────────
@@ -760,16 +827,17 @@ export async function joinClass(studentId: string, code: string): Promise<void> 
   const studentData = studentSnap.exists() ? (studentSnap.data() as AppUser) : null;
   const teacherData = teacherSnap.exists() ? (teacherSnap.data() as AppUser) : null;
   const classSubject = classData.subject || teacherData?.teacherSubject || 'Both';
+  const studentSubject = studentData?.subject || 'both';
 
-  if (!studentData?.subject) {
-    throw new Error('Your account subject is not set. Ask an admin to set it before joining a class.');
-  }
-
-  if (!studentMatchesTeacher(studentData.subject, classSubject)) {
+  if (!studentMatchesTeacher(studentSubject, classSubject)) {
     throw new Error(`This class is for ${classSubject} students only.`);
   }
 
   await updateDoc(classDoc.ref, { studentIds: arrayUnion(studentId) });
+  
+  if (!studentData?.subject && classSubject !== 'Both') {
+    await updateDoc(doc(db, 'users', studentId), { subject: classSubject.toLowerCase() });
+  }
 }
 
 export async function deleteClass(classId: string): Promise<void> {
@@ -1031,6 +1099,11 @@ export async function getMiniQuizzes(teacherId: string): Promise<MiniQuiz[]> {
 
 export async function addMiniQuiz(data: Omit<MiniQuiz, 'id' | 'createdAt'>): Promise<string> {
   const docRef = await addDoc(collection(db, 'mini_quizzes'), { ...data, createdAt: serverTimestamp() });
+  
+  if (data.visibleTo) {
+    await notifyStudentsForNewTest(data.title, data.visibleTo, data.teacherName || 'Admin');
+  }
+  
   return docRef.id;
 }
 

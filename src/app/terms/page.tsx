@@ -18,7 +18,7 @@ export default function TermsOfServicePage() {
           <p>You must provide accurate and complete information when creating an account. You are responsible for maintaining the security of your password and account.</p>
 
           <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', marginTop: '1rem' }}>2. Acceptable Use</h2>
-          <p>You agree not to misuse our services. You may not copy, distribute, or reverse-engineer any part of the platform, including our practice tests, question banks, and AI algorithms, without explicit permission.</p>
+          <p>You agree not to misuse our services. You may not copy, distribute, or reverse-engineer any part of the platform, including our practice tests, question banks, and algorithms, without explicit permission.</p>
 
           <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', marginTop: '1rem' }}>3. Subscription & Payments</h2>
           <p>Certain features require a paid subscription. Payments are processed securely. Subscriptions automatically renew unless canceled before the next billing cycle.</p>

@@ -17,7 +17,6 @@ import Latex from 'react-latex-next';
 import { motion } from 'framer-motion';
 import AnnotatableText, { HighlightAnnotation, LATEX_DELIMITERS } from '@/components/AnnotatableText';
 import { Edit2, Clock, BookOpen, Sparkles } from 'lucide-react';
-import AIExamCharacter from '@/components/AIExamCharacter';
 import WhiteboardStep from '@/components/WhiteboardStep';
 
 // ──────────────────────────────────────────────
@@ -229,6 +228,14 @@ export default function TestPage() {
                m2h.push(...m1.splice(half));
             }
 
+            const cfg = (doc as any).modulesConfig;
+            if (cfg) {
+              if (cfg.M1?.questions) m1.splice(cfg.M1.questions);
+              if (cfg.M2?.questions) m2h.splice(cfg.M2.questions);
+              if (cfg.MATH_M1?.questions) mathM1.splice(cfg.MATH_M1.questions);
+              if (cfg.MATH_M2?.questions) mathM2h.splice(cfg.MATH_M2.questions);
+            }
+
             const finalTestData: any = {
               id: testId,
               name: (doc as any).name,
@@ -236,6 +243,7 @@ export default function TestPage() {
               M1: m1,
               M2H: m2h,
               M2E: m2h,
+              modulesConfig: cfg
             };
             
             if (isFullTest) {
@@ -411,7 +419,7 @@ export default function TestPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // get current module time
-  const currentModuleTime = testData?.customTime ?? MODULE_TIME[moduleKey] ?? 35;
+  const currentModuleTime = testData?.modulesConfig?.[moduleKey]?.time ?? testData?.customTime ?? MODULE_TIME[moduleKey] ?? 35;
 
   // reset timer when module changes, phase changes
   useEffect(() => {
@@ -485,6 +493,12 @@ export default function TestPage() {
         return correct / qs.length;
       };
 
+      const questionList: any[] = [];
+      let answeredCount = 0;
+      let flaggedCount = 0;
+      let correctCount = 0;
+      let incorrectCount = 0;
+
       const routedToM2H = getScorePct('M1') >= 0.5;
       const routedToMathM2H = getScorePct('MATH_M1') >= 0.5;
 
@@ -495,6 +509,31 @@ export default function TestPage() {
           : ['M1', routedToM2H ? 'M2H' : 'M2E'];
 
       const allModules = Array.from(new Set(rawModules.filter(k => Boolean(k) && k !== 'break' && k !== 'results'))) as string[];
+      
+      allModules.forEach(mk => {
+        const qs = testData[mk as keyof DSATModule] ?? [];
+        qs.forEach((q: any, i: number) => {
+          const userAns = q.type === 'SPR' ? sprAnswers[mk as string]?.[i] : answers[mk as string]?.[i];
+          const isCorrect = userAns === q.correctAnswer;
+          const isMk = !!marked[mk as string]?.[i];
+          
+          if (userAns) {
+            answeredCount++;
+            if (isCorrect) correctCount++;
+            else incorrectCount++;
+          }
+          if (isMk) flaggedCount++;
+
+          questionList.push({
+            num: i + 1,
+            module: mk,
+            isAnswered: !!userAns,
+            isCorrect: isCorrect,
+            isMarked: isMk,
+            idx: i
+          });
+        });
+      });
 
       let totalCorrect = 0, totalQuestions = 0;
       let mathCorrect = 0, mathQuestions = 0;
@@ -622,7 +661,7 @@ export default function TestPage() {
   };
 
   const q = questions[currentIdx];
-  const annKey = q.passage ? 'pass_' + q.passage.length + '_' + q.passage.slice(0, 20).replace(/\s/g, '') : q.id;
+  const annKey = q?.passage ? 'pass_' + q.passage.length + '_' + q.passage.slice(0, 20).replace(/\s/g, '') : q?.id;
 
   const setAnswer = (optLetter: string) => {
     setAnswers(prev => ({ ...prev, [moduleKey]: { ...prev[moduleKey], [currentIdx]: optLetter } }));
@@ -669,7 +708,9 @@ export default function TestPage() {
   if (!testData) return null;
 
   if (phase === 'intro') {
-    const totalQuestions = (testData.M1?.length || 0) + (testData.M2H?.length || 0) + (testData.M2E?.length || 0) + (testData.MATH_M1?.length || 0) + (testData.MATH_M2H?.length || 0) + (testData.MATH_M2E?.length || 0);
+    const rwModule2Length = Math.max(testData.M2H?.length || 0, testData.M2E?.length || 0);
+    const mathModule2Length = Math.max(testData.MATH_M2H?.length || 0, testData.MATH_M2E?.length || 0);
+    const totalQuestions = (testData.M1?.length || 0) + rwModule2Length + (testData.MATH_M1?.length || 0) + mathModule2Length;
     const timeLimitStr = testData.customTime ? testData.customTime + ' mins' : (testData.isFull ? '134 mins' : 'Standard');
     return (
       <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
@@ -686,7 +727,6 @@ export default function TestPage() {
               </p>
             </div>
           </div>
-          <AIExamCharacter phase="intro" activeHelpsLeft={activeHelpsLeft} onRequestHelp={() => setActiveHelpsLeft(prev => prev - 1)} />
           <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
             <button
               onClick={() => router.back()}
@@ -750,6 +790,8 @@ export default function TestPage() {
     let qNumber = 1;
     let answeredCount = 0;
     let flaggedCount = 0;
+    let correctCount = 0;
+    let incorrectCount = 0;
     
     const getScorePct = (mod: string) => {
       const qs = testData?.[mod] ?? [];
@@ -779,7 +821,11 @@ export default function TestPage() {
         const isCorrect = userAns === q.correctAnswer;
         const isMk = !!marked[mk as string]?.[i];
         
-        if (userAns) answeredCount++;
+        if (userAns) {
+          answeredCount++;
+          if (isCorrect) correctCount++;
+          else incorrectCount++;
+        }
         if (isMk) flaggedCount++;
 
         questionList.push({
@@ -834,20 +880,40 @@ export default function TestPage() {
         {/* Main Content */}
         <div style={{ maxWidth: '1000px', margin: '0 auto', width: '100%', padding: '2rem' }}>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
             <div style={{ background: '#fff', padding: '1.25rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid #22c55e', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
               <div>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600', marginBottom: '0.25rem' }}>Answered</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#22c55e' }}>{answeredCount}</div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600', marginBottom: '0.25rem' }}>Correct</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#22c55e' }}>{correctCount}</div>
               </div>
               <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#dcfce3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Check size={18} color="#16a34a" />
               </div>
             </div>
-            
+
+            <div style={{ background: '#fff', padding: '1.25rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid #ef4444', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600', marginBottom: '0.25rem' }}>Mistakes</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#ef4444' }}>{incorrectCount}</div>
+              </div>
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={18} color="#dc2626" />
+              </div>
+            </div>
+
+            <div style={{ background: '#fff', padding: '1.25rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid #3b82f6', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600', marginBottom: '0.25rem' }}>Answered</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#3b82f6' }}>{answeredCount}</div>
+              </div>
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Edit2 size={18} color="#2563eb" />
+              </div>
+            </div>
+
             <div style={{ background: '#fff', padding: '1.25rem', borderRadius: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid #f59e0b', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
               <div>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600', marginBottom: '0.25rem' }}>Flagged for Review</div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600', marginBottom: '0.25rem' }}>Flagged</div>
                 <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#f59e0b' }}>{flaggedCount}</div>
               </div>
               <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -929,8 +995,10 @@ export default function TestPage() {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
-              <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.8rem', color: '#475569', fontWeight: '600' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '14px', height: '14px', background: '#bbf7d0', border: '1px solid #86efac', borderRadius: '2px' }} /> Answered ({answeredCount})</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', fontSize: '0.8rem', color: '#475569', fontWeight: '600' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '14px', height: '14px', background: '#bbf7d0', border: '1px solid #86efac', borderRadius: '2px' }} /> Correct ({correctCount})</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '14px', height: '14px', background: '#fecaca', border: '1px solid #fca5a5', borderRadius: '2px' }} /> Mistakes ({incorrectCount})</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '14px', height: '14px', background: '#e2e8f0', border: '1px solid #cbd5e1', borderRadius: '2px' }} /> Answered ({answeredCount})</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '14px', height: '14px', background: '#fef08a', border: '1px solid #fde047', borderRadius: '2px' }} /> Flagged ({flaggedCount})</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '14px', height: '14px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '2px' }} /> Unanswered ({unansweredCount})</span>
               </div>
@@ -1663,13 +1731,6 @@ export default function TestPage() {
         </motion.div>
       )}
 
-      {/* AI Assistant */}
-      <AIExamCharacter 
-        phase="testing" 
-        currentQuestion={q} 
-        activeHelpsLeft={activeHelpsLeft} 
-        onRequestHelp={() => setActiveHelpsLeft(prev => prev - 1)} 
-      />
 
       {/* Anti-Cheat Modal */}
       {showCheatModal && (

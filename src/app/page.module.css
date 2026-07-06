@@ -223,7 +223,7 @@
 /* Bento Grid */
 .bentoGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
   max-width: 1200px;
   margin: 0 auto;
@@ -511,15 +511,7 @@
   color: #fff;
 }
 
-.footerBottom {
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  padding-top: 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.85rem;
-  color: #71717a;
-}
+
 
 .statusIndicator {
   display: flex;
@@ -684,7 +676,7 @@
 /* Testimonials */
 .testimonialsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.5rem;
   max-width: 1200px;
   margin: 0 auto;
@@ -887,12 +879,16 @@
 
 @media (max-width: 768px) {
   .heroTitle {
-    font-size: 3rem;
+    font-size: 2.2rem;
   }
   .bentoCard, .pricingCard, .testimonialCard {
-    padding: 2rem;
+    padding: 1.5rem;
   }
   .deepDiveTitle {
-    font-size: 2.5rem;
+    font-size: 2rem;
+  }
+  .footerNavGrid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { db } from '@/lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
@@ -297,8 +298,33 @@ export default function AdminDashboardPage() {
                         <input type="checkbox" checked={selected.has(user.uid)}
                           onChange={() => toggleSelect(user.uid)} style={{ cursor: 'pointer' }} />
                       </td>
-                      <td style={{ padding: '0.75rem 0.875rem', fontWeight: '600', color: '#0f172a' }}>{user.email}</td>
-                      <td style={{ padding: '0.75rem 0.875rem', color: '#475569' }}>{user.displayName || '—'}</td>
+                      <td style={{ padding: '0.75rem 0.875rem', fontWeight: '600', color: '#0f172a' }}>
+                        {user.role === 'student' || user.role === 'teacher' ? (
+                          <Link href={`/admin/${user.role}/${user.uid}`} style={{ color: '#0f172a', textDecoration: 'none' }} onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'} onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>
+                            {user.email}
+                          </Link>
+                        ) : (
+                          user.email
+                        )}
+                      </td>
+                      <td style={{ padding: '0.75rem 0.875rem', color: '#475569' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            {user.photoURL ? (
+                              <img src={user.photoURL} alt="Profile" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                            ) : (
+                              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontWeight: '800', fontSize: '0.75rem', flexShrink: 0 }}>
+                                {(user.displayName || user.email || 'U')[0].toUpperCase()}
+                              </div>
+                            )}
+                            {user.role === 'student' || user.role === 'teacher' ? (
+                              <Link href={`/admin/${user.role}/${user.uid}`} style={{ color: '#475569', textDecoration: 'none' }} onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'} onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>
+                                {user.displayName || '—'}
+                              </Link>
+                            ) : (
+                              user.displayName || '—'
+                            )}
+                          </div>
+                      </td>
                       <td style={{ padding: '0.75rem 0.875rem' }}>
                         <span style={{ padding: '0.15rem 0.5rem', borderRadius: '1rem', fontSize: '0.65rem', fontWeight: '800', background: rc.bg, color: rc.color }}>
                           {user.role.toUpperCase()}

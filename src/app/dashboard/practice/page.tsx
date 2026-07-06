@@ -79,13 +79,7 @@ export default function PracticePage() {
   useEffect(() => {
     if (!appUser?.uid) return;
     getTestBanks(appUser.uid, appUser.role).then(tests => {
-      const filteredByVisibility = tests.filter(t => {
-        if (!t.visibleTo || t.visibleTo === 'all') return true;
-        if (Array.isArray(t.visibleTo) && t.visibleTo.includes(appUser.uid)) return true;
-        return false;
-      });
-
-      setDbTests(filterItemsBySubject(filteredByVisibility, appUser.subject));
+      setDbTests(tests);
       setDbLoading(false);
     }).catch(() => setDbLoading(false));
   }, [appUser?.uid, appUser?.role, appUser?.subject]);
