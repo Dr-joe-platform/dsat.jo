@@ -58,30 +58,21 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
             <div>
               <div style={{ fontSize: '0.6rem', fontWeight: '800', color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Teacher Panel</div>
               <div style={{ fontSize: '1rem', fontWeight: '900', color: '#0f172a' }}>DSAT.JO</div>
+              <div style={{ fontSize: '0.65rem', fontWeight: '600', color: '#3b82f6', marginTop: '0.125rem' }}>{teacherSubject} Teacher</div>
             </div>
           )}
           <button onClick={() => setCollapsed(!collapsed)} style={{ width: '26px', height: '26px', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}>
             {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
           </button>
         </div>
-
-        {/* Subject Display */}
-        {!collapsed && (
-          <div style={{ padding: '0.75rem', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
-            <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.25rem' }}>Subject Focus</div>
-            <div style={{ 
-              display: 'inline-block', padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase',
-              background: teacherSubject.toLowerCase() === 'math' ? '#eff6ff' : teacherSubject.toLowerCase() === 'english' ? '#f5f3ff' : '#f8fafc',
-              color: teacherSubject.toLowerCase() === 'math' ? '#2563eb' : teacherSubject.toLowerCase() === 'english' ? '#7c3aed' : '#475569',
-              border: `1px solid ${teacherSubject.toLowerCase() === 'math' ? '#bfdbfe' : teacherSubject.toLowerCase() === 'english' ? '#ddd6fe' : '#e2e8f0'}`
-            }}>
-              {teacherSubject}
-            </div>
-          </div>
-        )}
-
         <nav style={{ flex: 1, padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1px', overflowY: 'auto' }}>
-          {teacherNav.map(item => {
+          {teacherNav
+            .filter(item => {
+              if (item.href === '/teacher/vocabulary' && teacherSubject === 'Math') return false;
+              // we can add more subject-specific filtering here if needed
+              return true;
+            })
+            .map(item => {
             const active = isActive(item.href);
             return (
               <Link key={item.href} href={item.href} title={collapsed ? item.label : undefined} style={{ display: 'flex', alignItems: 'center', gap: collapsed ? '0' : '0.625rem', padding: collapsed ? '0.5rem' : '0.5rem 0.75rem', borderRadius: '0.5rem', backgroundColor: active ? '#0f172a' : 'transparent', color: active ? '#ffffff' : '#475569', fontWeight: active ? '600' : '500', fontSize: '0.825rem', textDecoration: 'none', transition: 'all 0.15s', justifyContent: collapsed ? 'center' : 'flex-start', minHeight: '34px' }}

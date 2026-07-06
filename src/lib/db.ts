@@ -36,6 +36,8 @@ export type { AppUser }; // Re-export for other pages
 // ─── Type Definitions ─────────────────────────────────────────────────────────
 
 export interface TestResult {
+  correctQuestionIds?: string[];
+  unansweredQuestionIds?: string[];
   id: string;
   userId: string;
   testId: string;
@@ -362,15 +364,38 @@ export interface Ebook {
   title: string;
   author: string;
   description: string;
-  subject: string;
-  pages: number;
-  downloadUrl: string;
+  pdfUrl: string;
+  coverUrl?: string;
+  createdAt: any;
+  subject?: string;
+  coverColor?: string;
   coverEmoji?: string;
+  teacherId?: string;
 }
 
-export async function getEbooks(): Promise<Ebook[]> {
+export async function getEbooks(userId?: string, role?: string, subject?: string): Promise<Ebook[]> {
   const snap = await getDocs(collection(db, 'ebooks'));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as Ebook));
+  const allEbooks = snap.docs.map(d => ({ id: d.id, ...d.data() } as Ebook));
+
+  if (role === 'super_admin' || role === 'admin') {
+    return subject ? filterItemsBySubject(allEbooks, subject) : allEbooks;
+  }
+
+  if (role === 'teacher' && userId) {
+    const mine = allEbooks.filter(b => b.teacherId === userId);
+    return filterItemsBySubject(mine, subject);
+  }
+
+  if (role === 'student' && userId) {
+    const teacherIds = await getTeacherIdsForStudent(userId);
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    const studentSubject = subject || (userDoc.exists() ? userDoc.data().subject : undefined);
+    
+    const visible = allEbooks.filter(b => !b.teacherId || teacherIds.includes(b.teacherId));
+    return filterItemsForStudent(visible, studentSubject);
+  }
+
+  return allEbooks.filter(b => !b.teacherId);
 }
 
 // ─── Notifications ───────────────────────────────────────────────────────────
@@ -615,6 +640,8 @@ export interface AdminTestBank {
   teacherName?: string;
   content?: string;
   visibleTo?: 'all' | string[];
+  isMiniQuiz?: boolean;
+  customTime?: number;
 }
 
 export async function getTestBanks(userId?: string, role?: string, subject?: string): Promise<AdminTestBank[]> {
@@ -652,6 +679,11 @@ export async function getTestBanks(userId?: string, role?: string, subject?: str
     console.error('Failed to fetch test banks, check indexes', err);
     return [];
   }
+}
+
+export async function updateTestBank(testId: string, data: Partial<AdminTestBank>): Promise<void> {
+  const docRef = doc(db, 'tests', testId);
+  await updateDoc(docRef, data);
 }
 
 export async function toggleTestPublicStatus(testId: string, isPublic: boolean): Promise<void> {
@@ -954,6 +986,7 @@ export interface SharedResource {
   subject: string;
   fileUrl: string;
   fileName: string;
+  coverUrl?: string;
   createdAt: any;
 }
 
@@ -978,6 +1011,9 @@ export interface QuizQuestion {
   answer: number;
 }
 export interface MiniQuiz {
+  teacherName?: string;
+  difficulty?: string;
+  visibleTo?: 'all' | string[];
   id?: string;
   teacherId: string;
   title: string;
@@ -1120,4 +1156,27 @@ export function subscribeToMessages(conversationId: string, callback: (msgs: Cha
     const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() } as ChatMessage));
     callback(msgs);
   });
+}
+
+
+export async function getAllMiniQuizzes(): Promise<MiniQuiz[]> {
+  const q = query(collection(db, 'mini_quizzes'), orderBy('createdAt', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as MiniQuiz));
+}
+
+export async function getStudentMiniQuizzes(userId: string, subject?: string): Promise<MiniQuiz[]> {
+  const allQuizzes = await getAllMiniQuizzes();
+  return allQuizzes.filter(q => {
+    if (q.visibleTo && Array.isArray(q.visibleTo)) {
+      return q.visibleTo.includes(userId);
+    }
+    return q.isPublic || q.visibleTo === 'all';
+  });
+}
+
+export async function getMiniQuizById(id: string): Promise<MiniQuiz | null> {
+  const docSnap = await getDoc(doc(db, 'mini_quizzes', id));
+  if (!docSnap.exists()) return null;
+  return { id: docSnap.id, ...docSnap.data() } as MiniQuiz;
 }

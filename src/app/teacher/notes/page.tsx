@@ -5,6 +5,7 @@ import { SharedResource, getSharedResources, addSharedResource, deleteSharedReso
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { FileText, Plus, Share2, Eye, Trash2, Edit2, UploadCloud, X, Loader2 } from 'lucide-react';
+import ImageUploader from '@/components/ImageUploader';
 
 export default function TeacherNotesPage() {
   const { appUser } = useAuth();
@@ -14,6 +15,7 @@ export default function TeacherNotesPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [title, setTitle] = useState('');
+  const [coverUrl, setCoverUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -51,11 +53,13 @@ export default function TeacherNotesPage() {
         title,
         subject: appUser!.teacherSubject || 'General',
         fileUrl: downloadUrl,
-        fileName: file.name
+        fileName: file.name,
+        coverUrl
       });
 
       setShowModal(false);
       setTitle('');
+      setCoverUrl('');
       if (fileInputRef.current) fileInputRef.current.value = '';
       loadData();
     } catch (err: any) {
@@ -98,10 +102,29 @@ export default function TeacherNotesPage() {
             
             <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#475569', marginBottom: '0.375rem' }}>Title *</label>
-                <input required value={title} onChange={e => setTitle(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} placeholder="e.g. Advanced Math Formulas" />
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#475569', marginBottom: '0.25rem' }}>Title</label>
+                <input 
+                  type="text" 
+                  value={title} 
+                  onChange={e => setTitle(e.target.value)} 
+                  placeholder="e.g. Chapter 1 Summary"
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }}
+                />
               </div>
-              
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#475569', marginBottom: '0.25rem' }}>Cover Image (Optional)</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  {coverUrl && (
+                    <img src={coverUrl} alt="Cover Preview" style={{ width: '60px', height: '80px', objectFit: 'cover', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }} />
+                  )}
+                  <ImageUploader 
+                    onUpload={(url) => setCoverUrl(url)}
+                    buttonText="Upload Cover"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#475569', marginBottom: '0.375rem' }}>File (PDF, Image, etc.) *</label>
                 <div
@@ -154,21 +177,22 @@ export default function TeacherNotesPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
           {resources.map(res => (
-            <div key={res.id} style={{ background: '#fff', borderRadius: '1rem', border: '1px solid #e2e8f0', padding: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                <div style={{ background: '#e0e7ff', color: '#4f46e5', padding: '0.3rem 0.6rem', borderRadius: '0.5rem', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {res.subject}
+            <div key={res.id} style={{ background: '#fff', borderRadius: '1rem', border: '1px solid #e2e8f0', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              {res.coverUrl ? (
+                <img src={res.coverUrl} alt={res.title} style={{ width: '40px', height: '50px', objectFit: 'cover', borderRadius: '0.5rem', flexShrink: 0, border: '1px solid #cbd5e1' }} />
+              ) : (
+                <div style={{ background: '#e0e7ff', color: '#4f46e5', padding: '0.75rem', borderRadius: '0.75rem', flexShrink: 0 }}>
+                  <FileText size={24} />
                 </div>
-                <button onClick={() => res.id && handleDelete(res.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}><Trash2 size={16} /></button>
-              </div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a', marginBottom: '0.5rem', lineHeight: '1.3' }}>{res.title}</h3>
-              
-              <div style={{ marginTop: 'auto', paddingTop: '1rem' }}>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  File: {res.fileName}
+              )}
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.25rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{res.title}</h3>
+                  <button onClick={() => res.id && handleDelete(res.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.2rem' }}><Trash2 size={16} /></button>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <a href={res.fileUrl} target="_blank" rel="noreferrer" style={{ flex: 1, textDecoration: 'none', padding: '0.6rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', color: '#0f172a', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = '#e2e8f0'} onMouseLeave={e => e.currentTarget.style.background = '#f8fafc'}>
+                <p style={{ fontSize: '0.8rem', color: '#64748b', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{res.fileName}</p>
+                <div style={{ marginTop: '0.75rem' }}>
+                  <a href={res.fileUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', textDecoration: 'none', padding: '0.6rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', color: '#0f172a', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = '#e2e8f0'} onMouseLeave={e => e.currentTarget.style.background = '#f8fafc'}>
                     <Eye size={14} /> View / Download
                   </a>
                 </div>

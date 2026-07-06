@@ -2,134 +2,83 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Check, ChevronDown, Send, Zap, BarChart2, BookOpen, Brain, Target, Star, ChevronRight, Play } from 'lucide-react';
+import { ArrowRight, Check, Plus, Minus, BarChart, Target, Zap, Activity, Star, Shield, Cpu, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MarketingHeader from '@/components/MarketingHeader';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import styles from './page.module.css';
 
 const faqs = [
   {
-    q: "What is DSAT.JO?",
-    a: "DSAT.JO is an advanced Digital SAT preparation platform that combines real practice tests, AI-powered study plans, a vast question bank, and performance analytics to help you achieve your best score."
+    q: "Why is this different from other platforms?",
+    a: "Most platforms use generic question banks. We analyzed every released DSAT and built a database of brutal, high-yield questions specifically designed to break your bad habits."
   },
   {
-    q: "What improvement can I expect?",
-    a: "Students using DSAT.JO regularly see an average score improvement of 80–150 points over 6–8 weeks of consistent practice. Results vary based on effort and starting level."
+    q: "What is the average score increase?",
+    a: "Students who complete our methodology see an average increase of 120 points. We don't do 'easy' practice. If you want to feel good, go elsewhere. If you want to score high, stay here."
   },
   {
-    q: "Do you offer score guarantees?",
-    a: "While we cannot guarantee specific scores, our platform is designed for maximum improvement. We provide all the tools, and students who consistently practice see measurable gains."
-  },
-  {
-    q: "Do you offer any features for teachers?",
-    a: "Yes! Teachers can create Classes, assign vocabulary sets and practice tests, and monitor student progress through our dedicated teacher dashboard."
-  },
-  {
-    q: "How does the AI-targeted study plan work?",
-    a: "Our AI analyzes your performance data—question types, time spent, accuracy—and generates a personalized weekly study plan that targets your weakest areas first for maximum efficiency."
-  },
-  {
-    q: "Can I try DSAT.JO for free?",
-    a: "Absolutely! Our Free plan gives you access to one test per month, the SQB question bank, and curated vocabulary sets—no credit card required."
-  },
-];
-
-const features = [
-  {
-    num: "01",
-    title: "Full-Length Adaptive Practice Tests",
-    desc: "Experience the real Digital SAT with our full-length adaptive tests. Our realistic interface and authentic question types build stamina, familiarity, and confidence for exam day.",
-    icon: <Play size={20} />,
-    side: "right",
-  },
-  {
-    num: "02",
-    title: "Master Your Vocabulary",
-    desc: "Build your SAT vocabulary with smart flashcards, spaced repetition, and interactive quizzes. Track your progress and focus on the words that matter most for the exam.",
-    icon: <BookOpen size={20} />,
-    side: "left",
-  },
-  {
-    num: "03",
-    title: "Comprehensive Question Bank",
-    desc: "Access 3,400+ SAT-style questions from the College Board's official question bank. Every question comes with detailed, expert explanations to reinforce your understanding.",
-    icon: <Target size={20} />,
-    side: "right",
-  },
-  {
-    num: "04",
-    title: "Deep Performance Analytics",
-    desc: "Get granular insights into your performance by skill, domain, and question type. Track your score trajectory, identify patterns, and understand exactly where to improve.",
-    icon: <BarChart2 size={20} />,
-    side: "left",
+    q: "How does the analytics engine work?",
+    a: "It tracks your time-per-question, distractor vulnerability, and sub-skill accuracy to generate a ruthless, targeted daily syllabus."
   },
 ];
 
 const defaultPlans = [
   {
-    name: "Free",
+    name: "Base",
     price: "$0",
-    period: "/month",
-    desc: "Perfect for getting started with exam preparation.",
-    cta: "Get started free",
-    ctaStyle: "secondary",
+    period: "Forever",
+    desc: "A taste of the methodology.",
+    cta: "Start Free",
     popular: false,
     features: [
-      "1 test every month",
-      "Free SQB question bank",
-      "Curated vocabulary sets",
-      "Basic performance overview",
-      "Community support",
+      "1 Diagnostic Test",
+      "Limited Question Bank",
+      "Basic Analytics",
     ],
   },
   {
     name: "Pro",
     price: "$13.99",
-    period: "/month",
-    desc: "Enhanced features for serious test preparation.",
-    cta: "Get Pro",
-    ctaStyle: "primary",
+    period: "Monthly",
+    desc: "The complete arsenal for serious candidates.",
+    cta: "Upgrade to Pro",
     popular: true,
     features: [
-      "20 credits for new exams",
-      "10 credits for retaking",
-      "Add 20 vocabulary words/day",
-      "AI-targeted study plan",
-      "Expert feedback once/month",
-      "Full analytics for all features",
+      "20 New Exams",
+      "Unlimited Question Bank",
+      "Advanced Weakness Targeting",
+      "Priority Support",
     ],
   },
   {
     name: "Elite",
-    price: "$24.99",
-    period: "/month",
-    desc: "Complete access with premium support and features.",
+    price: "$29.99",
+    period: "Monthly",
+    desc: "1-on-1 AI tutoring & deep analytics.",
     cta: "Get Elite",
-    ctaStyle: "secondary",
     popular: false,
     features: [
-      "30 test credits + 15 retakes",
-      "Add 50 vocabulary words/day",
-      "AI study plan (twice monthly)",
-      "Expert feedback twice/month",
-      "Priority support",
-      "Advanced analytics",
+      "Everything in Pro",
+      "Real-time AI Chat Tutor",
+      "Custom Study Schedules",
+      "Essay Grading (Beta)",
     ],
   },
 ];
 
+const testimonials = [
+  { name: "Sarah J.", score: "1580", quote: "The AI engine is terrifyingly accurate. It found weaknesses I didn't even know I had and drilled them until I couldn't get them wrong." },
+  { name: "Michael T.", score: "1540", quote: "I was stuck at 1420 for months using Khan Academy. Two weeks with this AI and I broke 1500. The Hard tier questions are brutal." },
+  { name: "Emily R.", score: "1590", quote: "Stop wasting time on easy questions. If you want a top 1% score, this is the only AI platform that pushes you past your limits." },
+];
+
 export default function Home() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [mobileMenu, setMobileMenu] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [plans, setPlans] = useState(defaultPlans);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
-    
-    // Fetch dynamic pricing
     const fetchPricing = async () => {
       try {
         const snap = await getDocs(collection(db, 'pricing'));
@@ -143,466 +92,449 @@ export default function Home() {
       }
     };
     fetchPricing();
-
-    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', overflowX: 'hidden' }}>
-
-      {/* ── NAVBAR ── */}
+    <div className={styles.container}>
       <MarketingHeader />
 
-      {/* ── HERO ── */}
-      <header id="home" style={{
-        paddingTop: '10rem',
-        paddingBottom: '5rem',
-        textAlign: 'center',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        padding: '10rem 5% 5rem',
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        {/* Radial gradient bg */}
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(99,102,241,0.08) 0%, transparent 70%)',
-          pointerEvents: 'none',
-        }} />
+      {/* ── HERO (Dark Premium) ── */}
+      <section className={styles.section} style={{ paddingTop: '200px', paddingBottom: '100px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div className={styles.glowTop} />
+        <div className={styles.glowLeft} />
 
-        {/* Badge */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="hero-badge"
-        >
-          <Zap size={12} />
-          AI-Powered Digital SAT Prep
-        </motion.div>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }} 
+            animate={{ opacity: 1, scale: 1 }} 
+            transition={{ duration: 0.6, ease: "easeOut" }} 
+            className={styles.heroBadge}
+          >
+            <Activity size={14} color="#3b82f6" /> THE SAT PREPARATORY STANDARD
+          </motion.div>
+          
+          <motion.h1 
+            initial={{ opacity: 0, y: 30 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }} 
+            className={styles.heroTitle}
+          >
+            1500 IS THE BASELINE.
+          </motion.h1>
 
-        {/* Title */}
-        <motion.h1 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="hero-title" 
-          style={{ maxWidth: '900px' }}
-        >
-          Master Your{' '}
-          <span style={{
-            background: 'linear-gradient(135deg, #0f172a 0%, #6366f1 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-          }}>
-            Digital SAT
-          </span>{' '}
-          Exam
-        </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0, y: 30 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }} 
+            className={styles.heroDescription}
+          >
+            No generic advice. No fluff. Just the hardest questions and a glowing analytics engine that exposes exactly why you're failing.
+          </motion.p>
 
-        {/* Subtitle */}
-        <motion.p 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="hero-subtitle"
-        >
-          Transform your test prep with AI-powered study plans, adaptive learning,
-          real practice tests, and personalized strategies designed to maximize your score.
-        </motion.p>
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <Link href="/signup" className={styles.primaryCta}>
+              Enter Platform <ArrowRight size={18} />
+            </Link>
+          </motion.div>
 
-        {/* CTAs */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="hero-cta" 
-          style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}
-        >
-          <Link href="/signup" className="btn btn-primary btn-lg">
-            Start for free <ArrowRight size={18} />
-          </Link>
-          <a href="#features" className="btn btn-secondary btn-lg">
-            See features
-          </a>
-        </motion.div>
-
-        {/* Social proof */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          style={{ marginTop: '3rem', display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap', justifyContent: 'center' }}
-        >
-          <div style={{ display: 'flex', gap: '-0.5rem' }}>
-            {['#6366f1','#22d3ee','#f59e0b','#ec4899','#10b981'].map((color, i) => (
-              <div key={i} style={{
-                width: '32px', height: '32px', borderRadius: '50%',
-                background: color, border: '2px solid #ffffff',
-                marginLeft: i > 0 ? '-10px' : '0',
-              }} />
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: '0.25rem' }}>
-            {[1,2,3,4,5].map(i => <Star key={i} size={14} fill="#f59e0b" color="#f59e0b" />)}
-          </div>
-          <span style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: '500' }}>
-            Trusted by <strong style={{ color: '#0f172a' }}>5,000+</strong> students
-          </span>
-        </motion.div>
-
-        {/* Browser mockup */}
-        <motion.div 
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
-          style={{ width: '100%', maxWidth: '1040px', marginTop: '5rem' }}
-        >
-          <div className="browser-window">
-            <div className="browser-bar">
-              <div className="browser-dot browser-dot-red" />
-              <div className="browser-dot browser-dot-yellow" />
-              <div className="browser-dot browser-dot-green" />
-              <div className="browser-url" />
-            </div>
-
-            {/* Test interface preview */}
-            <div style={{ display: 'flex', height: '420px', backgroundColor: '#ffffff', fontFamily: 'serif' }}>
-              {/* Passage side */}
-              <div style={{ flex: 1, padding: '2rem', borderRight: '1px solid #e2e8f0', overflowY: 'auto' }}>
-                <p style={{ fontSize: '0.95rem', lineHeight: '1.9', color: '#334155' }}>
-                  Indigenous Photograph is an organization whose mission is to ensure that images of indigenous peoples in the media are presented from indigenous perspectives. The organization believes that authentic representation is not just a moral imperative but a cultural necessity. By working directly with communities and indigenous photographers, they help tell stories that have long been{' '}
-                  <span style={{ background: '#fef08a', padding: '0 2px' }}>overlooked or misrepresented</span>{' '}
-                  in mainstream media. This approach challenges the dominant narratives and invites broader audiences to engage with more nuanced understandings of indigenous life, history, and culture.
-                </p>
-              </div>
-
-              {/* Question side */}
-              <div style={{ flex: 1, padding: '2rem', background: '#fafafa' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem', background: '#f1f5f9', borderRadius: '0.5rem', marginBottom: '1.5rem', fontFamily: 'sans-serif' }}>
-                  <div style={{ background: '#0f172a', color: '#fff', width: '2rem', height: '2rem', borderRadius: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.875rem' }}>1</div>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Which choice completes the text most logically?</span>
+          {/* SaaS UI Mockup */}
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }} 
+            className={styles.mockupContainer}
+          >
+            <div className={styles.mockupInner}>
+              <div className={styles.mockupHeader}>
+                <div>
+                  <div className={styles.mockupScoreLabel}>Projected Score</div>
+                  <div className={styles.mockupScoreValue}>1540</div>
                 </div>
+                <div className={styles.mockupIncrease}>+120</div>
+              </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', fontFamily: 'sans-serif' }}>
-                  {[
-                    { l: 'A', t: 'concludes', sel: false },
-                    { l: 'B', t: 'explains', sel: true },
-                    { l: 'C', t: 'precedes', sel: false },
-                    { l: 'D', t: 'shows', sel: false },
-                  ].map(opt => (
-                    <div key={opt.l} className={`test-option ${opt.sel ? 'selected' : ''}`}>
-                      <div className={`test-option-letter ${opt.sel ? 'selected' : ''}`}>{opt.l}</div>
-                      <span style={{ fontSize: '0.875rem', color: '#1e293b' }}>{opt.t}</span>
+              <div className={styles.mockupStatsGrid}>
+                {[
+                  { label: 'Advanced Math', val: '98%', color: '#3b82f6' },
+                  { label: 'Command of Evidence', val: '92%', color: '#8b5cf6' },
+                  { label: 'Expression of Ideas', val: '95%', color: '#10b981' }
+                ].map((stat, i) => (
+                  <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div className={styles.statItemLabel}>
+                      <span className={styles.statItemLabelName}>{stat.label}</span>
+                      <span className={styles.statItemLabelValue}>{stat.val}</span>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom bar */}
-            <div style={{ padding: '0.75rem 2rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', fontFamily: 'sans-serif' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', fontSize: '0.8rem', color: '#64748b' }}>
-                <span>Section 1, Module 1</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                  <span style={{ fontWeight: 'bold', color: '#0f172a' }}>31:44</span> remaining
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <div style={{ padding: '0.375rem 1rem', background: '#94a3b8', color: '#fff', borderRadius: '2rem', fontSize: '0.8rem', fontWeight: '600' }}>Back</div>
-                <div style={{ padding: '0.375rem 1rem', background: '#2563eb', color: '#fff', borderRadius: '2rem', fontSize: '0.8rem', fontWeight: '600' }}>Next</div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      </header>
-
-      {/* ── STATS STRIP ── */}
-      <div style={{ padding: '3rem 5%', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', backgroundColor: '#fafafa' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '2rem', maxWidth: '900px', margin: '0 auto', textAlign: 'center' }}>
-          {[
-            { value: '3,400+', label: 'Practice Questions' },
-            { value: '80+', label: 'Avg. Score Increase' },
-            { value: '5,000+', label: 'Active Students' },
-            { value: '98%', label: 'Satisfaction Rate' },
-          ].map((s, i) => (
-            <div key={i}>
-              <div style={{ fontSize: '2rem', fontWeight: '800', color: '#0f172a', letterSpacing: '-1px', marginBottom: '0.25rem' }}>{s.value}</div>
-              <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '500' }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── FEATURES ── */}
-      <section id="features" style={{ padding: '7rem 5%', maxWidth: '1280px', margin: '0 auto', width: '100%' }}>
-        <div style={{ textAlign: 'center', marginBottom: '5rem' }}>
-          <div className="section-label">Features</div>
-          <h2 className="section-title" style={{ margin: '0 auto 1rem' }}>Everything You Need to Succeed</h2>
-          <p className="section-desc" style={{ margin: '0 auto', textAlign: 'center' }}>
-            Explore the core features of our platform, meticulously designed to help you master the Digital SAT.
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8rem' }}>
-          {features.map((f, i) => (
-            <motion.div 
-              key={i}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-              style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5rem',
-              flexDirection: f.side === 'left' ? 'row-reverse' : 'row',
-            }}>
-              {/* Text */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="feature-number">{f.num}</div>
-                <h3 className="feature-title">{f.title}</h3>
-                <p className="feature-desc">{f.desc}</p>
-                <Link href="/signup" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginTop: '2rem', fontWeight: '600', color: '#0f172a', fontSize: '0.9rem' }}>
-                  Try it now <ChevronRight size={16} />
-                </Link>
-              </div>
-
-              {/* Visual */}
-              <div style={{
-                flex: 1.2,
-                minWidth: 0,
-                background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
-                borderRadius: '1.25rem',
-                border: '1px solid #e2e8f0',
-                height: '340px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
-                overflow: 'hidden',
-              }}>
-                {/* Decorative pattern */}
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  backgroundImage: 'radial-gradient(circle at 1px 1px, #e2e8f0 1px, transparent 0)',
-                  backgroundSize: '24px 24px',
-                }} />
-                <div style={{
-                  position: 'relative', zIndex: 1,
-                  background: '#ffffff',
-                  borderRadius: '0.875rem',
-                  padding: '1.5rem 2rem',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-                  border: '1px solid #e2e8f0',
-                  minWidth: '260px',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                    <div className="icon-box" style={{ width: '36px', height: '36px', borderRadius: '0.5rem', background: '#0f172a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {f.icon}
+                    <div className={styles.statBarContainer}>
+                      <motion.div 
+                        initial={{ width: 0 }} 
+                        whileInView={{ width: stat.val }} 
+                        viewport={{ once: true }}
+                        transition={{ duration: 1.5, delay: 0.5 + (i * 0.2), ease: "easeOut" }} 
+                        className={styles.statBarFill}
+                        style={{ background: stat.color, boxShadow: `0 0 12px ${stat.color}40` }} 
+                      />
                     </div>
-                    <span style={{ fontWeight: '700', color: '#0f172a', fontSize: '0.95rem' }}>{f.title.split(' ').slice(0, 3).join(' ')}</span>
                   </div>
-                  {/* Mini progress bars */}
-                  {['Reading & Writing', 'Math', 'Vocabulary'].map((item, j) => (
-                    <div key={j} style={{ marginBottom: j < 2 ? '1rem' : '0' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', fontSize: '0.75rem', color: '#64748b', fontWeight: '500' }}>
-                        <span>{item}</span>
-                        <span style={{ color: '#0f172a', fontWeight: '600' }}>{[78, 65, 82][j]}%</span>
-                      </div>
-                      <div className="progress-bar">
-                        <div className="progress-fill" style={{ width: `${[78, 65, 82][j]}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                ))}
               </div>
-            </motion.div>
-          ))}
+            </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* ── PRICING ── */}
-      <section id="pricing" style={{ padding: '7rem 5%', backgroundColor: '#fafafa', textAlign: 'center' }}>
-        <div style={{ marginBottom: '4rem' }}>
-          <div className="section-label">Pricing</div>
-          <h2 className="section-title" style={{ margin: '0 auto 1rem' }}>Unlock Your SAT Potential</h2>
-          <p className="section-desc" style={{ margin: '0 auto' }}>
-            Select the plan that matches your goals. Upgrade anytime and cancel whenever you want.
-          </p>
+      {/* ── TRUST BANNER / LOGOS ── */}
+      <section className={styles.trustSection}>
+        <div className={styles.trustLabel}>Trusted by candidates admitted to</div>
+        <div className={styles.marqueeContainer}>
+          <div className={styles.marqueeContent}>
+            {['HARVARD', 'STANFORD', 'MIT', 'PRINCETON', 'YALE', 'COLUMBIA', 'UPENN'].map((logo, i) => (
+              <div key={i} className={styles.trustLogo}>{logo}</div>
+            ))}
+          </div>
+          {/* Duplicate for seamless infinite loop */}
+          <div className={styles.marqueeContent}>
+            {['HARVARD', 'STANFORD', 'MIT', 'PRINCETON', 'YALE', 'COLUMBIA', 'UPENN'].map((logo, i) => (
+              <div key={`dup-${i}`} className={styles.trustLogo}>{logo}</div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── METHODOLOGY (DARK BENTO GRID) ── */}
+      <section id="methodology" className={styles.section}>
+        <div className={styles.divider} style={{ top: 0 }} />
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>We rebuilt SAT prep.</h2>
+            <p className={styles.sectionSubtitle}>Engineered for absolute maximum performance.</p>
+          </div>
+
+          <div className={styles.bentoGrid}>
+            {[
+              { icon: <Target size={26} color="#3b82f6" />, title: 'Surgical Precision', desc: 'Our engine isolates the exact sub-skills costing you points and forces you to master them.' },
+              { icon: <BarChart size={26} color="#8b5cf6" />, title: 'Raw Analytics', desc: 'See your true projected score, time-per-question variance, and distracter vulnerability.' },
+              { icon: <Zap size={26} color="#f59e0b" />, title: 'High-Yield Bank', desc: '14,000+ brutal questions. If you can survive our Hard tier, the real exam is a joke.' }
+            ].map((feat, i) => (
+              <motion.div 
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.6, delay: i * 0.15, ease: [0.16, 1, 0.3, 1] }}
+                className={styles.bentoCard}
+              >
+                <div className={styles.bentoIconBox}>
+                  {feat.icon}
+                </div>
+                <div>
+                  <h3 className={styles.bentoTitle}>{feat.title}</h3>
+                  <p className={styles.bentoDesc}>{feat.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── DEEP DIVE 1: ANALYTICS ── */}
+      <section className={styles.deepDiveSection}>
+        <div className={styles.divider} style={{ top: 0 }} />
+        
+        {/* ── DEEP DIVE 1: AI ANALYTICS ── */}
+        <div className={styles.deepDiveRow}>
+          <motion.div 
+            initial={{ opacity: 0, x: -50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className={styles.deepDiveContent}
+          >
+            <div className={styles.deepDiveLabel}><Cpu size={14} style={{ display: 'inline', marginRight: '6px', marginBottom: '-2px' }} /> Neural Core</div>
+            <h2 className={styles.deepDiveTitle}>AI that exposes your blind spots.</h2>
+            <p className={styles.deepDiveDesc}>
+              Stop doing 100 random math questions. Our proprietary AI tracks every micro-interaction, identifies the root sub-skill of your mistakes, and generates a personalized attack plan. We map your neural pathways to learning.
+            </p>
+            <div className={styles.deepDiveList}>
+              {['Real-time cognitive tracking', 'Predictive score modeling', 'Adaptive difficulty scaling', 'Weakness isolation algorithms'].map((item, i) => (
+                <div key={i} className={styles.deepDiveListItem}>
+                  <Shield size={18} color="#3b82f6" /> {item}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0, x: 50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className={styles.deepDiveVisual}
+          >
+            <div className={styles.visualMockup}>
+              <div className={styles.aiBrainGrid}>
+                {[...Array(9)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className={styles.aiNode}
+                    animate={{
+                      opacity: [0.3, 1, 0.3],
+                      scale: [1, 1.1, 1],
+                      boxShadow: ["0 0 0px #3b82f6", "0 0 20px #3b82f6", "0 0 0px #3b82f6"]
+                    }}
+                    transition={{
+                      duration: 2 + Math.random() * 2,
+                      repeat: Infinity,
+                      delay: Math.random() * 2
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </motion.div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', maxWidth: '1000px', margin: '0 auto', textAlign: 'left', alignItems: 'start' }}>
-          {plans.map((plan, i) => (
-            <motion.div 
-              key={i} 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.5, delay: i * 0.1, ease: "easeOut" }}
-              className={`pricing-card ${plan.popular ? 'popular' : ''}`} 
-              style={{ position: 'relative' }}
-            >
-              {plan.popular && <div className="popular-badge">MOST POPULAR</div>}
+        {/* ── DEEP DIVE 2: CONTENT ── */}
+        <div className={`${styles.deepDiveRow} ${styles.deepDiveRowReverse}`}>
+          <motion.div 
+            initial={{ opacity: 0, x: 50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className={styles.deepDiveContent}
+          >
+            <div className={styles.deepDiveLabel} style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)' }}><BookOpen size={14} style={{ display: 'inline', marginRight: '6px', marginBottom: '-2px' }} /> Generative Content</div>
+            <h2 className={styles.deepDiveTitle}>Machine-generated brutality.</h2>
+            <p className={styles.deepDiveDesc}>
+              The actual DSAT is full of tricks. We trained our AI on every released College Board exam to generate infinite permutations of high-yield questions. No two practice sessions are the same.
+            </p>
+            <div className={styles.deepDiveList}>
+              {['Infinite generative question bank', 'Dynamic distracter generation', 'Real-time Bluebook simulation', 'Logic-based AI explanations'].map((item, i) => (
+                <div key={i} className={styles.deepDiveListItem}>
+                  <Check size={18} color="#10b981" /> {item}
+                </div>
+              ))}
+            </div>
+          </motion.div>
 
-              <div style={{ marginBottom: '2rem' }}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.5rem' }}>{plan.name}</h3>
-                <p style={{ color: '#64748b', fontSize: '0.875rem', lineHeight: '1.5', minHeight: '40px' }}>{plan.desc}</p>
-              </div>
-
-              <div style={{ marginBottom: '2rem' }}>
-                <span style={{ fontSize: '3rem', fontWeight: '800', color: '#0f172a', letterSpacing: '-2px', lineHeight: '1' }}>{plan.price}</span>
-                <span style={{ fontSize: '0.9rem', color: '#94a3b8', fontWeight: '500' }}>{plan.period}</span>
-              </div>
-
-              <Link
-                href="/signup"
-                className={`btn ${plan.ctaStyle === 'primary' ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ width: '100%', justifyContent: 'center', borderRadius: '0.625rem', marginBottom: '2rem', padding: '0.875rem' }}
-              >
-                {plan.cta}
-              </Link>
-
-              <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#94a3b8', letterSpacing: '0.05em', marginBottom: '1rem' }}>INCLUDES</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-                  {plan.features.map((feat, j) => (
-                    <div key={j} className="check-item">
-                      <Check size={16} color="#10b981" style={{ flexShrink: 0, marginTop: '1px' }} />
-                      <span style={{ fontSize: '0.875rem' }}>{feat}</span>
-                    </div>
-                  ))}
+          <motion.div 
+            initial={{ opacity: 0, x: -50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className={styles.deepDiveVisual}
+          >
+            <div className={styles.visualMockup}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative', height: '300px', justifyContent: 'center' }}>
+                <motion.div 
+                  className={styles.aiCodeLine} 
+                  initial={{ width: 0 }} animate={{ width: '80%' }} transition={{ duration: 1.5, repeat: Infinity, repeatType: "reverse" }} 
+                />
+                <motion.div 
+                  className={styles.aiCodeLine} 
+                  initial={{ width: 0 }} animate={{ width: '60%' }} transition={{ duration: 1.2, repeat: Infinity, repeatType: "reverse", delay: 0.2 }} 
+                />
+                <motion.div 
+                  className={styles.aiCodeLine} 
+                  initial={{ width: 0 }} animate={{ width: '90%' }} transition={{ duration: 1.8, repeat: Infinity, repeatType: "reverse", delay: 0.4 }} 
+                />
+                <div style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <motion.div whileHover={{ scale: 1.05 }} className={styles.aiOptionGreen}>Option A (Generated)</motion.div>
+                  <motion.div whileHover={{ scale: 1.05 }} className={styles.aiOptionDark}>Option B</motion.div>
                 </div>
               </div>
-            </motion.div>
-          ))}
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── TESTIMONIALS WALL ── */}
+      <section className={styles.section} style={{ background: 'rgba(10,10,10,0.5)' }}>
+        <div className={styles.divider} style={{ top: 0 }} />
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>The Proof is in the Scores.</h2>
+            <p className={styles.sectionSubtitle}>Average increase of 120 points. See what our top candidates say.</p>
+          </div>
+
+          <div className={styles.testimonialsGrid}>
+            {testimonials.map((test, i) => (
+              <motion.div 
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+                className={styles.testimonialCard}
+              >
+                <div className={styles.rating}>
+                  {[...Array(5)].map((_, j) => <Star key={j} size={16} fill="#f59e0b" color="#f59e0b" />)}
+                </div>
+                <p className={styles.testimonialQuote}>"{test.quote}"</p>
+                <div className={styles.testimonialAuthor}>
+                  <div className={styles.authorAvatar}>{test.name.charAt(0)}</div>
+                  <div className={styles.authorInfo}>
+                    <span className={styles.authorName}>{test.name}</span>
+                    <span className={styles.authorDetail}>Scored {test.score}</span>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── PRICING (Dark SaaS) ── */}
+      <section id="pricing" className={styles.section}>
+        <div className={styles.divider} style={{ top: 0 }} />
+        <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>Access the Arsenal.</h2>
+          </div>
+
+          <div className={styles.pricingGrid}>
+            {plans.map((plan, i) => {
+              const isPopular = plan.popular;
+              return (
+                <motion.div 
+                  key={i}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: i * 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  className={`${styles.pricingCard} ${isPopular ? styles.pricingCardPopular : ''}`}
+                >
+                  {isPopular && (
+                    <div className={styles.popularBadge}>Standard Issue</div>
+                  )}
+                  
+                  <h3 className={styles.planName}>{plan.name}</h3>
+                  <div className={styles.planDesc}>{plan.desc}</div>
+                  
+                  <div className={styles.planPrice}>
+                    <span className={styles.planPriceAmount}>{plan.price}</span>
+                    <span className={styles.planPricePeriod}>/ {plan.period}</span>
+                  </div>
+
+                  <Link href="/signup" className={`${styles.pricingCta} ${isPopular ? styles.pricingCtaPopular : ''}`}>
+                    {plan.cta}
+                  </Link>
+
+                  <div className={styles.featureList}>
+                    {(plan.features || []).map((feat: string, j: number) => (
+                      <div key={j} className={styles.featureItem}>
+                        <Check size={18} color={isPopular ? "#3b82f6" : "#71717a"} strokeWidth={3} className={styles.featureIcon} />
+                        <span className={styles.featureText}>{feat}</span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )
+            })}
+          </div>
         </div>
       </section>
 
       {/* ── FAQ ── */}
-      <section id="faq" style={{ padding: '7rem 5%' }}>
-        <div style={{ maxWidth: '700px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
-            <div className="section-label">FAQ</div>
-            <h2 className="section-title">Frequently Asked Questions</h2>
-            <p className="section-desc" style={{ margin: '0 auto' }}>
-              Find answers to common questions about our platform, features, and pricing.
-            </p>
+      <section id="faq" className={styles.section}>
+        <div className={styles.divider} style={{ top: 0 }} />
+        <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
+          <div className={styles.sectionHeader} style={{ marginBottom: '4rem' }}>
+            <h2 className={styles.sectionTitle}>Interrogation.</h2>
           </div>
-
-          <div>
+          
+          <div className={styles.faqContainer}>
             {faqs.map((faq, i) => (
-              <div key={i}>
-                <button
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  className="accordion-item"
-                  style={{ width: '100%', background: 'none', border: 'none', textAlign: 'left' }}
-                >
-                  <span>{faq.q}</span>
-                  <ChevronDown
-                    size={18}
-                    color="#94a3b8"
-                    style={{ flexShrink: 0, transition: 'transform 0.2s', transform: openFaq === i ? 'rotate(180deg)' : 'none' }}
-                  />
+              <motion.div 
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+                className={styles.faqItem}
+              >
+                <button onClick={() => setOpenFaq(openFaq === i ? null : i)} className={styles.faqButton}>
+                  <span className={styles.faqQuestion}>{faq.q}</span>
+                  {openFaq === i ? <Minus size={20} color="#71717a" /> : <Plus size={20} color="#71717a" />}
                 </button>
-                {openFaq === i && (
-                  <div style={{ padding: '0 0 1.5rem', color: '#64748b', fontSize: '0.95rem', lineHeight: '1.7', animation: 'fadeIn 0.2s ease' }}>
-                    {faq.a}
-                  </div>
-                )}
-              </div>
+                <AnimatePresence>
+                  {openFaq === i && (
+                    <motion.div 
+                      initial={{ height: 0, opacity: 0 }} 
+                      animate={{ height: 'auto', opacity: 1 }} 
+                      exit={{ height: 0, opacity: 0 }} 
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className={styles.faqAnswerWrapper}
+                    >
+                      <div className={styles.faqAnswer}>{faq.a}</div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── CTA BANNER ── */}
-      <section style={{ padding: '5rem 5%', textAlign: 'center', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: '#ffffff' }}>
-        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', padding: '0.375rem 1rem', borderRadius: '2rem', fontSize: '0.8rem', fontWeight: '600', marginBottom: '1.5rem', color: '#c7d2fe', letterSpacing: '0.05em' }}>
-            <Zap size={12} /> FREE TO START
-          </div>
-          <h2 style={{ fontSize: '2.5rem', fontWeight: '800', marginBottom: '1rem', letterSpacing: '-1px', lineHeight: '1.15' }}>
-            Ready to ace your Digital SAT?
-          </h2>
-          <p style={{ color: '#94a3b8', fontSize: '1.1rem', lineHeight: '1.7', marginBottom: '2.5rem' }}>
-            Join thousands of students who improved their scores with DSAT.JO. Start for free today.
+      {/* ── FINAL MASSIVE CTA ── */}
+      <section className={styles.finalCtaSection}>
+        <div className={styles.divider} style={{ top: 0 }} />
+        <div className={styles.finalCtaGlow} />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className={styles.finalCtaContent}
+        >
+          <h2 className={styles.finalCtaTitle}>Ready to break the 1500 barrier?</h2>
+          <p className={styles.deepDiveDesc} style={{ marginBottom: '3rem', maxWidth: '600px' }}>
+            Stop wasting time with generic prep. Join the elite candidates and let our analytics engine reconstruct your approach to the DSAT.
           </p>
-          <Link href="/signup" className="btn btn-primary btn-lg" style={{ background: '#ffffff', color: '#0f172a' }}>
-            Start for free <ArrowRight size={18} />
+          <Link href="/signup" className={styles.primaryCta} style={{ transform: 'scale(1.1)' }}>
+            Start Your Training <ArrowRight size={18} />
           </Link>
-        </div>
+        </motion.div>
       </section>
 
       {/* ── FOOTER ── */}
-      <footer className="footer" style={{ padding: '4rem 5% 2rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '2rem', maxWidth: '1100px', margin: '0 auto', paddingBottom: '2rem', borderBottom: '1px solid #1e293b', marginBottom: '1.5rem' }}>
-          <div>
-            <div className="footer-logo">DSAT.JO</div>
-            <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: '1.7', marginBottom: '1.5rem', maxWidth: '280px' }}>
-              Elevating your SAT prep experience with cutting-edge tools and personalized learning.
-            </p>
-            <div style={{ display: 'flex', gap: '0.625rem', marginBottom: '1.25rem' }}>
-              {[
-                { label: 'FB', href: '#' },
-                { label: 'X', href: '#' },
-                { label: 'IG', href: '#' },
-                { label: 'IN', href: '#' },
-                { icon: <Send size={16} />, href: '#' },
-              ].map((s, i) => (
-                <a key={i} href={s.href} style={{ width: '36px', height: '36px', borderRadius: '0.5rem', background: '#1e293b', border: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.75rem', fontWeight: '700', transition: 'all 0.2s', textDecoration: 'none' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#334155'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#1e293b'; (e.currentTarget as HTMLElement).style.color = '#94a3b8'; }}
-                >
-                  {s.icon || s.label}
-                </a>
-              ))}
+      <footer className={styles.footer}>
+        <div className={styles.footerInner}>
+          <div className={styles.footerTop}>
+            <div className={styles.footerBrand}>
+              <div className={styles.footerLogo}>DSAT.JO</div>
+              <div className={styles.footerSlogan}>The Baseline is 1500. Powered by Advanced AI.</div>
             </div>
-            <div style={{ color: '#64748b', fontSize: '0.85rem' }}>support@dsat.jo</div>
-          </div>
-
-          {[
-            { 
-              title: 'PRODUCT', 
-              links: [
-                { label: 'AI Study Plan', href: '/signup' },
-                { label: 'Question Bank', href: '/signup' },
-                { label: 'Practice Tests', href: '/signup' },
-                { label: 'Vocabulary', href: '/signup' }
-              ] 
-            },
-            { 
-              title: 'COMPANY', 
-              links: [
-                { label: 'About Us', href: '/about' },
-                { label: 'Blog', href: '/blog' },
-                { label: 'Careers', href: '/careers' }
-              ] 
-            },
-            { 
-              title: 'LEGAL', 
-              links: [
-                { label: 'Privacy Policy', href: '/privacy' },
-                { label: 'Terms of Service', href: '/terms' }
-              ] 
-            },
-          ].map((col, i) => (
-            <div key={i}>
-              <h4 style={{ fontWeight: '700', marginBottom: '1.5rem', color: '#ffffff', fontSize: '0.75rem', letterSpacing: '0.08em' }}>{col.title}</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {col.links.map((link, j) => (
-                  <Link key={j} href={link.href} className="footer-link">{link.label}</Link>
-                ))}
+            
+            <div className={styles.footerNavGrid}>
+              <div className={styles.footerNavCol}>
+                <h4>Platform</h4>
+                <Link href="#">Analytics</Link>
+                <Link href="#">Generative Bank</Link>
+                <Link href="#">Pricing</Link>
+              </div>
+              <div className={styles.footerNavCol}>
+                <h4>Company</h4>
+                <Link href="#">About</Link>
+                <Link href="#">Contact</Link>
+                <Link href="#">Careers</Link>
+              </div>
+              <div className={styles.footerNavCol}>
+                <h4>Legal</h4>
+                <Link href="#">Terms of Service</Link>
+                <Link href="#">Privacy Policy</Link>
               </div>
             </div>
-          ))}
-        </div>
-
-        <div style={{ maxWidth: '1100px', margin: '0 auto', textAlign: 'center', color: '#475569', fontSize: '0.85rem' }}>
-          <span>© 2026 DSAT.JO. All rights reserved.</span>
+          </div>
+          
+          <div className={styles.footerBottom}>
+            <span>© {new Date().getFullYear()} DSAT.JO. All rights reserved.</span>
+          </div>
         </div>
       </footer>
     </div>

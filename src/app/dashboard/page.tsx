@@ -9,6 +9,7 @@ import {
   CheckCircle, ChevronRight, Zap, Trophy, AlertTriangle,
   BookMarked, Bot, Shield, Star, Award
 } from 'lucide-react';
+import { filterItemsBySubject } from '@/lib/subject-filter';
 import { useAuth } from '@/lib/auth-context';
 import { useResults } from '@/lib/hooks/useResults';
 import { getUserStats, UserStats, getStudentAssignments, Assignment } from '@/lib/db';
@@ -38,7 +39,6 @@ export default function Dashboard() {
       getStudentAssignments(appUser.uid),
     ]).then(async ([s, a]) => {
       setStats(s);
-      const { filterItemsBySubject } = await import('@/lib/subject-filter');
       const filteredAssignments = filterItemsBySubject(a, appUser.subject);
       setAssignments(filteredAssignments.filter(x => x.status === 'pending'));
       setStatsLoading(false);

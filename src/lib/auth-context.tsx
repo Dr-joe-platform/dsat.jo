@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { useRouter } from 'next/navigation';
+import { linkStudentToTeacherByCode } from './db';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 export type UserRole = 'student' | 'teacher' | 'admin' | 'super_admin';
@@ -39,6 +40,7 @@ export interface AppUser {
   teacherSubject?: 'English' | 'Math' | 'Both';
   allowedTests?: string[];
   lastActiveDate?: string;
+  teacherCodes?: string[]; // Array of teacher codes for students
 }
 
 interface AuthContextValue {
@@ -77,10 +79,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const snap = await getDoc(doc(db, 'users', user.uid));
           if (snap.exists()) {
-            setAppUser({ uid: user.uid, ...snap.data() } as AppUser);
+            const data = snap.data() as Omit<AppUser, 'uid'>;
+            setAppUser({ uid: user.uid, ...data } as AppUser);
             // Update last active
             const now = new Date().toISOString();
-            if (snap.data().lastActiveDate !== now.split('T')[0]) {
+            if (data.lastActiveDate !== now.split('T')[0]) {
               await setDoc(doc(db, 'users', user.uid), { lastActiveDate: now.split('T')[0] }, { merge: true });
             }
           } else {
@@ -93,7 +96,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               status: 'approved',
             });
           }
-        } catch {
+        } catch (err) {
+          console.error("onAuthStateChanged ERROR:", err);
           setAppUser(null);
         }
       } else {
@@ -111,12 +115,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password);
       const snap = await getDoc(doc(db, 'users', cred.user.uid));
-      const data = snap.exists() ? (snap.data() as AppUser) : null;
+      const data = snap.exists() ? (snap.data() as Omit<AppUser, 'uid'>) : null;
 
       if (!data) throw new Error('User profile not found. Contact support.');
       if (data.status === 'rejected') throw new Error('Your account has been rejected. Contact your teacher.');
       // Pending users can log in to Trial Mode
 
+      setAppUser({ uid: cred.user.uid, ...data } as AppUser);
+      
       // Route based on role
       if (data.role === 'admin' || data.role === 'super_admin') {
         router.push('/admin');
@@ -125,6 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         router.push('/dashboard');
       }
+      setLoading(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Login failed.';
       setError(
@@ -151,7 +158,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await updateProfile(cred.user, { displayName });
 
       const isTeacher = role === 'teacher';
-      const isAdmin = role === 'admin' || role === 'super_admin';
 
       if (isTeacher) {
         extra.teacherCode = 'TCH-' + Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -171,11 +177,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // If student provided a teacher code, link them
       if (role === 'student' && extra.teacherCode) {
-        // Dynamically import to avoid circular dependency at top-level
-        const { linkStudentToTeacherByCode } = await import('./db');
         await linkStudentToTeacherByCode(cred.user.uid, extra.subject || 'Both', extra.teacherCode);
       }
 
+      setAppUser({ uid: cred.user.uid, ...userData } as AppUser);
+      setLoading(false);
       router.push('/dashboard?status=pending');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Signup failed.';
@@ -207,20 +213,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           photoURL: cred.user.photoURL ?? '',
         };
         await setDoc(doc(db, 'users', cred.user.uid), userData);
+        setAppUser({ uid: cred.user.uid, ...userData } as AppUser);
         router.push('/dashboard?status=pending');
       } else {
-        const data = snap.data() as AppUser;
+        const data = snap.data() as Omit<AppUser, 'uid'>;
         if (data.status === 'rejected') throw new Error('Your account has been rejected.');
         // Pending users can log in to Trial Mode
         
-        if (data.role === 'admin' || data.role === 'super_admin') {
-          router.push('/admin');
-        } else if (data.role === 'teacher') {
-          router.push('/teacher');
-        } else {
-          router.push('/dashboard');
-        }
+        setAppUser({ uid: cred.user.uid, ...data } as AppUser);
+        
+        if (data.role === 'admin' || data.role === 'super_admin') router.push('/admin');
+        else if (data.role === 'teacher') router.push('/teacher');
+        else router.push('/dashboard');
       }
+      setLoading(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Google sign in failed.';
       setError(msg);

@@ -17,55 +17,87 @@ export default function MarketingHeader() {
 
   return (
     <>
-      {/* ── NAVBAR ── */}
-      <motion.nav 
+      {/* ── NAVBAR (Dark Premium) ── */}
+      <motion.div 
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="navbar" 
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         style={{
           position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
           zIndex: 1000,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: scrolled ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: scrolled ? 'blur(20px)' : 'none',
-          WebkitBackdropFilter: scrolled ? 'blur(20px)' : 'none',
-          boxShadow: scrolled ? '0 1px 16px rgba(0,0,0,0.06)' : 'none',
-          borderBottom: scrolled ? '1px solid rgba(226, 232, 240, 0.6)' : '1px solid #e2e8f0',
-          padding: scrolled ? '1rem 5%' : '1.5rem 5%',
-          transition: 'all 0.3s ease',
+          padding: scrolled ? '1rem 0' : '1.5rem 0',
+          transition: 'padding 0.3s ease',
+          pointerEvents: 'none'
         }}
       >
-        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
-          <div style={{ width: '36px', height: '36px', background: '#0f172a', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '900', fontSize: '1.25rem' }}>D</div>
-          <span style={{ fontSize: '1.5rem', fontWeight: '900', fontStyle: 'italic', color: '#0f172a', letterSpacing: '-0.5px' }}>DSAT.JO</span>
-        </Link>
+        <div style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: '0 5%',
+          pointerEvents: 'auto'
+        }}>
+          <nav 
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: scrolled ? 'rgba(10, 10, 10, 0.7)' : 'rgba(0, 0, 0, 0)',
+              backdropFilter: scrolled ? 'blur(24px)' : 'none',
+              WebkitBackdropFilter: scrolled ? 'blur(24px)' : 'none',
+              border: scrolled ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid transparent',
+              borderRadius: '100px',
+              padding: '0.75rem 1.5rem',
+              transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+              boxShadow: scrolled ? '0 10px 40px -10px rgba(0,0,0,0.5)' : 'none'
+            }}
+          >
+            <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
+              <div style={{ width: '32px', height: '32px', background: '#ffffff', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000000', fontWeight: '900', fontSize: '1rem', letterSpacing: '-0.05em' }}>JO</div>
+              <span style={{ fontSize: '1.25rem', fontWeight: '800', color: '#ffffff', letterSpacing: '0.02em' }}>DSAT.JO</span>
+            </Link>
 
-        <div className="nav-links">
-          <Link href="/" className="nav-link">Home</Link>
-          <Link href="/#features" className="nav-link">Features</Link>
-          <Link href="/#pricing" className="nav-link">Pricing</Link>
-          <Link href="/#faq" className="nav-link">FAQ</Link>
+            <div className="nav-links" style={{ display: 'flex', gap: '2.5rem' }}>
+              {['Platform', 'Methodology', 'Pricing', 'FAQ'].map(item => (
+                <Link key={item} href={`/#${item.toLowerCase()}`} className="nav-link" style={{ fontSize: '0.85rem', fontWeight: '500', color: 'rgba(255, 255, 255, 0.6)', transition: 'color 0.2s' }} onMouseOver={e => e.currentTarget.style.color = '#ffffff'} onMouseOut={e => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)'}>
+                  {item}
+                </Link>
+              ))}
+            </div>
+
+            <div className="nav-actions" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+              <Link href="/login" style={{ fontSize: '0.85rem', fontWeight: '600', color: '#ffffff', textDecoration: 'none', transition: 'opacity 0.2s' }} onMouseOver={e => e.currentTarget.style.opacity = '0.7'} onMouseOut={e => e.currentTarget.style.opacity = '1'}>
+                Login
+              </Link>
+              <Link href="/signup" style={{ 
+                background: '#ffffff', 
+                color: '#000000', 
+                padding: '0.6rem 1.25rem', 
+                borderRadius: '100px',
+                fontSize: '0.85rem', 
+                fontWeight: '700', 
+                textDecoration: 'none', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.5rem',
+                transition: 'all 0.2s',
+                boxShadow: '0 0 20px rgba(255,255,255,0.1)'
+              }}
+              onMouseOver={e => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 0 30px rgba(255,255,255,0.2)'; }}
+              onMouseOut={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(255,255,255,0.1)'; }}
+              >
+                Start Now <ArrowRight size={16} />
+              </Link>
+            </div>
+
+            <button className="mobile-menu-btn" onClick={() => setMobileMenu(!mobileMenu)} style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer' }}>
+              {mobileMenu ? <X size={24} color="#ffffff" /> : <Menu size={24} color="#ffffff" />}
+            </button>
+          </nav>
         </div>
-
-        <div className="nav-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <Link href="/login" className="btn btn-secondary" style={{ borderRadius: '0.625rem', padding: '0.5rem 1.125rem' }}>
-            Sign in
-          </Link>
-          <Link href="/signup" className="btn btn-primary" style={{ borderRadius: '0.625rem', padding: '0.5rem 1.125rem' }}>
-            Start for free <ArrowRight size={15} />
-          </Link>
-        </div>
-
-        <button className="mobile-menu-btn" onClick={() => setMobileMenu(!mobileMenu)}>
-          {mobileMenu ? <X size={24} color="#0f172a" /> : <Menu size={24} color="#0f172a" />}
-        </button>
-      </motion.nav>
+      </motion.div>
 
       {/* MOBILE MENU */}
       <AnimatePresence>
@@ -74,32 +106,32 @@ export default function MarketingHeader() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
             style={{
               position: 'fixed',
-              top: scrolled ? '64px' : '80px',
+              top: '80px',
               left: 0,
               right: 0,
-              background: 'rgba(255, 255, 255, 0.95)',
-              backdropFilter: 'blur(20px)',
-              padding: '1.5rem',
-              borderBottom: '1px solid #e2e8f0',
-              boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+              bottom: 0,
+              background: '#000000',
+              padding: '2rem 5%',
               zIndex: 999,
               display: 'flex',
               flexDirection: 'column',
-              gap: '1rem',
+              gap: '1.5rem',
             }}
           >
-            <Link href="/" className="nav-link" onClick={() => setMobileMenu(false)}>Home</Link>
-            <Link href="/#features" className="nav-link" onClick={() => setMobileMenu(false)}>Features</Link>
-            <Link href="/#pricing" className="nav-link" onClick={() => setMobileMenu(false)}>Pricing</Link>
-            <Link href="/#faq" className="nav-link" onClick={() => setMobileMenu(false)}>FAQ</Link>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
-              <Link href="/login" className="btn btn-secondary" style={{ justifyContent: 'center' }} onClick={() => setMobileMenu(false)}>
-                Sign in
+            {['Platform', 'Methodology', 'Pricing', 'FAQ'].map(item => (
+              <Link key={item} href={`/#${item.toLowerCase()}`} style={{ fontSize: '1.5rem', fontWeight: '800', color: '#ffffff', textDecoration: 'none', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }} onClick={() => setMobileMenu(false)}>
+                {item}
               </Link>
-              <Link href="/signup" className="btn btn-primary" style={{ justifyContent: 'center' }} onClick={() => setMobileMenu(false)}>
-                Start for free
+            ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '2rem' }}>
+              <Link href="/login" style={{ border: '1px solid rgba(255,255,255,0.2)', color: '#ffffff', padding: '1rem', borderRadius: '12px', fontSize: '1rem', fontWeight: '600', textDecoration: 'none', textAlign: 'center' }} onClick={() => setMobileMenu(false)}>
+                Login
+              </Link>
+              <Link href="/signup" style={{ background: '#ffffff', color: '#000000', padding: '1rem', borderRadius: '12px', fontSize: '1rem', fontWeight: '700', textDecoration: 'none', textAlign: 'center' }} onClick={() => setMobileMenu(false)}>
+                Start Now
               </Link>
             </div>
           </motion.div>

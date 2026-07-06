@@ -3,14 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { BarChart2, Users, Database, ClipboardList, Terminal, Bot, Settings, LogOut, ChevronLeft, ChevronRight, MessageSquare, Library, CreditCard, MessageCircle, PenTool } from 'lucide-react';
+import { BarChart2, Users, Database, Lock, ClipboardList, Terminal, Bot, Settings, LogOut, ChevronLeft, ChevronRight, MessageSquare, Library, CreditCard, MessageCircle, PenTool, Zap } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
 const adminNav = [
   { href: '/admin', icon: BarChart2, label: 'Dashboard' },
-  { href: '/admin/users', icon: Users, label: 'User Management' },
   { href: '/admin/create-complete-test', icon: PenTool, label: 'Create Full Exam' },
   { href: '/admin/test-bank', icon: Database, label: 'Test Bank' },
+  { href: '/admin/mini-quizzes', icon: Zap, label: 'Mini Quizzes' },
+  { href: '/admin/test-access', icon: Lock, label: 'Test Access' },
   { href: '/admin/activity-log', icon: ClipboardList, label: 'Activity Log' },
   { href: '/admin/system-logs', icon: Terminal, label: 'System Logs' },
   { href: '/admin/support', icon: MessageSquare, label: 'Support Tickets' },

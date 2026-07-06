@@ -6,29 +6,9 @@ import { Play, Clock, BarChart2, Target, BookOpen, Lock, ChevronRight, Calendar,
 import { useResults } from '@/lib/hooks/useResults';
 import { useAuth } from '@/lib/auth-context';
 import { getTestBanks, AdminTestBank } from '@/lib/db';
+import { filterItemsBySubject } from '@/lib/subject-filter';
 
-const COMPLETE_TESTS = [
-  { id: 'FULL_TEST_1', num: 1, name: 'DSAT Complete Mock 1', duration: '134 min', durationMins: 134 },
-  { id: 'FULL_TEST_2', num: 2, name: 'DSAT Complete Mock 2', duration: '134 min', durationMins: 134 },
-  { id: 'FULL_TEST_3', num: 3, name: 'DSAT Complete Mock 3', duration: '134 min', durationMins: 134 },
-  { id: 'FULL_TEST_4', num: 4, name: 'DSAT Complete Mock 4', duration: '134 min', durationMins: 134 },
-];
 
-const MATH_TESTS = [
-  { id: 'MATH_TEST_1', num: 1, name: 'Math Mock Test 1', duration: '70 min', durationMins: 70 },
-  { id: 'MATH_TEST_2', num: 2, name: 'Math Mock Test 2', duration: '70 min', durationMins: 70 },
-  { id: 'MATH_TEST_3', num: 3, name: 'Math Mock Test 3', duration: '70 min', durationMins: 70 },
-  { id: 'MATH_TEST_4', num: 4, name: 'Math Mock Test 4', duration: '70 min', durationMins: 70 },
-];
-
-const ENGLISH_TESTS = [
-  { id: 'ENG_TEST_1', num: 1, name: 'English Mock Test 1', duration: '64 min', durationMins: 64 },
-  { id: 'ENG_TEST_2', num: 2, name: 'English Mock Test 2', duration: '64 min', durationMins: 64 },
-  { id: 'ENG_TEST_3', num: 3, name: 'English Mock Test 3', duration: '64 min', durationMins: 64 },
-  { id: 'ENG_TEST_4', num: 4, name: 'English Mock Test 4', duration: '64 min', durationMins: 64 },
-];
-
-const ALL_SYSTEM_TESTS = [...COMPLETE_TESTS, ...MATH_TESTS, ...ENGLISH_TESTS];
 
 function ScorePredictor({ results }: { results: { totalScore: number; subject: string }[] }) {
   if (results.length < 1) return null;
@@ -40,7 +20,8 @@ function ScorePredictor({ results }: { results: { totalScore: number; subject: s
     if (scores.length === 0) return 400; // Fallback base score
     const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
     const trend = scores.length >= 2 ? scores[0] - scores[1] : 0;
-    return Math.min(800, Math.max(200, avg + Math.round(trend * 0.6) + 10));
+    const rawPrediction = Math.min(800, Math.max(200, avg + Math.round(trend * 0.6) + 10));
+    return Math.round(rawPrediction / 10) * 10;
   };
 
   const predMath = predict(mathScores);
@@ -97,9 +78,7 @@ export default function PracticePage() {
 
   useEffect(() => {
     if (!appUser?.uid) return;
-    getTestBanks(appUser.uid, appUser.role).then(async tests => {
-      const { filterItemsBySubject } = await import('@/lib/subject-filter');
-      
+    getTestBanks(appUser.uid, appUser.role).then(tests => {
       const filteredByVisibility = tests.filter(t => {
         if (!t.visibleTo || t.visibleTo === 'all') return true;
         if (Array.isArray(t.visibleTo) && t.visibleTo.includes(appUser.uid)) return true;
@@ -120,22 +99,45 @@ export default function PracticePage() {
 
   let totalMinutes = 0;
   results.forEach(r => {
-    const test = ALL_SYSTEM_TESTS.find(t => t.id === r.testId);
-    if (test) {
-      totalMinutes += test.durationMins;
+    const dbTest = dbTests.find(t => t.id === r.testId);
+    if (dbTest) {
+      if (dbTest.customTime) totalMinutes += dbTest.customTime;
+      else if (dbTest.subject === 'Mixed' || dbTest.subject === 'Full') totalMinutes += 134;
+      else if (dbTest.subject === 'Math') totalMinutes += 70;
+      else if (dbTest.subject === 'English') totalMinutes += 64;
+      else totalMinutes += Math.round((dbTest.questions || 50) * 1.5);
     } else {
-      const dbTest = dbTests.find(t => t.id === r.testId);
-      if (dbTest) {
-        totalMinutes += dbTest.questions ? Math.round(dbTest.questions * 1.5) : 70;
-      } else {
-        totalMinutes += 70;
-      }
+      totalMinutes += 70;
     }
   });
 
   const timeStr = totalMinutes >= 60 ? `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60 > 0 ? (totalMinutes % 60) + 'm' : ''}`.trim() : `${totalMinutes}m`;
 
-  const renderTestCategory = (title: string, tests: typeof COMPLETE_TESTS) => {
+  const mapDbTests = (tests: AdminTestBank[]) => tests.map((t, i) => {
+    let durationMins = 70;
+    if (t.subject === 'Mixed' || t.subject === 'Full') durationMins = 134;
+    else if (t.subject === 'English') durationMins = 64;
+    if (t.customTime) durationMins = t.customTime;
+
+    return {
+      id: t.id!,
+      num: i + 1,
+      name: t.name,
+      duration: `${durationMins} min`,
+      durationMins,
+      teacherName: t.teacherName,
+      subject: t.subject
+    };
+  });
+
+  const adminTests = dbTests.filter(t => !t.teacherId);
+  const teacherTests = dbTests.filter(t => !!t.teacherId);
+
+  const completeTests = mapDbTests(adminTests.filter(t => t.subject === 'Mixed' || t.subject === 'Full'));
+  const mathTests = mapDbTests(adminTests.filter(t => t.subject === 'Math'));
+  const englishTests = mapDbTests(adminTests.filter(t => t.subject === 'English'));
+
+  const renderTestCategory = (title: string, tests: any[]) => {
     return (
       <div style={{ marginBottom: '2.5rem' }}>
         <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a', marginBottom: '1rem' }}>{title}</h3>
@@ -143,33 +145,24 @@ export default function PracticePage() {
           {tests.map((test, idx) => {
             const result = getTestResult(test.id);
             const isCompleted = completedTestIds.has(test.id);
-            const isPendingUser = appUser?.status === 'pending';
-            const isTrialTest = isPendingUser && (test.id === 'FULL_TEST_1' || test.id === 'MATH_TEST_1' || test.id === 'ENG_TEST_1');
-            
-            // To unlock sequentially for normal users, we count how many of THIS category are completed
-            const categoryCompletedCount = tests.filter(t => completedTestIds.has(t.id)).length;
-            const isAvailable = isPendingUser ? isTrialTest : idx <= Math.max(0, categoryCompletedCount);
-            const isLocked = !isAvailable && !isCompleted;
 
             return (
-              <div key={test.id} className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', padding: '1.25rem 1.5rem', opacity: isLocked ? 0.6 : 1 }}>
+              <div key={test.id} className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', padding: '1.25rem 1.5rem' }}>
                 {/* Number */}
                 <div style={{
                   width: '44px', height: '44px', borderRadius: '0.625rem',
-                  background: isCompleted ? '#0f172a' : isAvailable ? '#f1f5f9' : '#f8fafc',
+                  background: isCompleted ? '#0f172a' : '#f1f5f9',
                   color: isCompleted ? '#fff' : '#94a3b8',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontWeight: '800', fontSize: '0.875rem', flexShrink: 0,
                 }}>
-                  {isLocked ? <Lock size={16} /> : test.num}
+                  {test.num}
                 </div>
 
                 {/* Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: '700', color: isLocked ? '#94a3b8' : '#0f172a', fontSize: '0.9rem', marginBottom: '0.25rem' }}>
+                  <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '0.9rem', marginBottom: '0.25rem' }}>
                     {test.name}
-                    {isLocked && <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', fontWeight: '700', background: '#fef3c7', color: '#92400e', padding: '0.1rem 0.4rem', borderRadius: '1rem' }}>PRO</span>}
-                    {isTrialTest && !isCompleted && <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', fontWeight: '700', background: '#dcfce7', color: '#166534', padding: '0.1rem 0.4rem', borderRadius: '1rem' }}>TRIAL</span>}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.75rem', color: '#94a3b8' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Clock size={11} /> {test.duration}</span>
@@ -203,19 +196,20 @@ export default function PracticePage() {
                         Retake
                       </Link>
                     </div>
-                  ) : isAvailable ? (
+                  ) : (
                     <Link href={`/test/${test.id}`} style={{ padding: '0.5rem 1.25rem', borderRadius: '0.5rem', background: 'linear-gradient(135deg, #1d4ed8, #4f46e5)', color: '#fff', fontWeight: '700', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
                       <Play size={13} fill="white" /> Start Test
-                    </Link>
-                  ) : (
-                    <Link href="/dashboard/upgrade" style={{ padding: '0.5rem 1.25rem', borderRadius: '0.5rem', background: 'linear-gradient(135deg, #0f172a, #334155)', color: '#fff', fontWeight: '700', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
-                      Upgrade
                     </Link>
                   )}
                 </div>
               </div>
             );
           })}
+          {tests.length === 0 && (
+            <div style={{ padding: '1.5rem', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '0.75rem', border: '1px dashed #cbd5e1', fontSize: '0.9rem', fontWeight: '500' }}>
+              No tests available in this category yet. Check back later!
+            </div>
+          )}
         </div>
       </div>
     );
@@ -281,18 +275,19 @@ export default function PracticePage() {
 
       {/* Tests lists */}
       <div>
-        {renderTestCategory('Complete Mock Tests', COMPLETE_TESTS)}
-        {(!appUser?.subject || appUser?.subject === 'math' || appUser?.subject === 'both') && renderTestCategory('Math Mock Tests', MATH_TESTS)}
-        {(!appUser?.subject || appUser?.subject === 'english' || appUser?.subject === 'both') && renderTestCategory('English Mock Tests', ENGLISH_TESTS)}
+        {renderTestCategory('Complete Mock Tests', completeTests)}
+        {(!appUser?.subject || appUser?.subject === 'math' || appUser?.subject === 'both') && renderTestCategory('Math Mock Tests', mathTests)}
+        {(!appUser?.subject || appUser?.subject === 'english' || appUser?.subject === 'both') && renderTestCategory('English Mock Tests', englishTests)}
         
-        {/* Dynamically Loaded Teacher/Admin Tests */}
-        {dbTests.length > 0 && (
+        {/* Dynamically Loaded Teacher Tests */}
+        {teacherTests.length > 0 && (
           <div style={{ marginBottom: '2.5rem' }}>
             <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a', marginBottom: '1rem' }}>Assignments & Custom Tests</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {dbTests.map((test, idx) => {
+              {teacherTests.map((test, idx) => {
                 const result = getTestResult(test.id!);
                 const isCompleted = completedTestIds.has(test.id!);
+                let durationMins = test.customTime || (test.subject === 'Math' ? 70 : test.subject === 'English' ? 64 : 134);
                 
                 return (
                   <div key={test.id} className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', padding: '1.25rem 1.5rem' }}>
@@ -309,11 +304,11 @@ export default function PracticePage() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '0.9rem', marginBottom: '0.25rem' }}>
                         {test.name}
-                        {test.subject === 'Full' && <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', fontWeight: '700', background: '#e0e7ff', color: '#4338ca', padding: '0.1rem 0.4rem', borderRadius: '1rem' }}>FULL EXAM</span>}
-                        {!test.isPublic && <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', fontWeight: '700', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '1rem' }}>CLASS ASSIGNMENT</span>}
+                        <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', fontWeight: '700', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '1rem' }}>By {test.teacherName || 'Teacher'}</span>
+                        <span style={{ marginLeft: '0.5rem', fontSize: '0.65rem', fontWeight: '700', background: '#e0e7ff', color: '#4338ca', padding: '0.1rem 0.4rem', borderRadius: '1rem' }}>{test.subject}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.75rem', color: '#94a3b8' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Clock size={11} /> {test.questions} Qs</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Clock size={11} /> {durationMins} min</span>
                         {result && <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Calendar size={11} /> {result.completedAt?.toDate?.()?.toLocaleDateString?.() ?? ''}</span>}
                         {isCompleted && !result && <span style={{ color: '#22c55e', fontWeight: '600' }}>✓ Completed</span>}
                       </div>
@@ -335,6 +330,9 @@ export default function PracticePage() {
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                           <Link href="/dashboard/results" style={{ padding: '0.5rem 0.875rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: '#ffffff', color: '#475569', fontWeight: '600', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.375rem', textDecoration: 'none' }}>
                             <BarChart2 size={13} /> Review Test
+                          </Link>
+                          <Link href={`/test/${test.id}`} style={{ padding: '0.5rem 0.875rem', borderRadius: '0.5rem', border: 'none', background: '#f1f5f9', color: '#0f172a', fontWeight: '600', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.375rem', textDecoration: 'none' }}>
+                            Retake
                           </Link>
                         </div>
                       ) : (

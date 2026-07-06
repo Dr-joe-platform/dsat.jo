@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth-context';
 import { getUserResults, TestResult } from '../db';
+import { filterResultsBySubject } from '../subject-filter';
 
 export interface ComputedStats {
   results: TestResult[];
@@ -25,7 +26,6 @@ export function useResults(): ComputedStats {
   useEffect(() => {
     if (!appUser?.uid) { setLoading(false); return; }
     getUserResults(appUser.uid).then(async r => {
-      const { filterResultsBySubject } = await import('../subject-filter');
       const filtered = filterResultsBySubject(r, appUser.subject);
       setResults(filtered);
       setLoading(false);
@@ -42,7 +42,8 @@ export function useResults(): ComputedStats {
   const rwResults = results.filter(r => r.subject === 'reading_writing');
   const bestRWScore = rwResults.length > 0 ? Math.max(...rwResults.map(r => r.totalScore)) : null;
 
-  const avgScore = results.length > 0 ? Math.round(results.reduce((s, r) => s + r.totalScore, 0) / results.length) : null;
+  const rawAvg = results.length > 0 ? results.reduce((s, r) => s + r.totalScore, 0) / results.length : null;
+  const avgScore = rawAvg !== null ? Math.round(rawAvg / 10) * 10 : null;
   const latestRW = rwResults[0]?.totalScore ?? null;
   const latestMath = mathResults[0]?.totalScore ?? null;
   const improvement = results.length >= 2 ? (results[0].totalScore - results[1].totalScore) : null;

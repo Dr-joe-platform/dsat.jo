@@ -54,14 +54,20 @@ export async function POST(req: Request) {
       })
     });
 
+    let replyText = "";
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Groq API Error Payload:', errorText);
-      throw new Error(`Groq API Error: ${response.statusText} - ${errorText}`);
+      console.warn('Groq API failed. Using fallback response.');
+      if (action === 'auto-hint') {
+        replyText = "Hint: Look closely at the keywords in the question and eliminate obviously wrong choices.";
+      } else if (action === 'active-help') {
+        replyText = "Here is some help: Make sure you understand what the question is asking before looking at the options. Try solving it step by step!";
+      } else {
+        replyText = "Hello! I'm your AI proctor. I'm here to help if you get stuck!";
+      }
+    } else {
+      const data = await response.json();
+      replyText = data.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response.";
     }
-
-    const data = await response.json();
-    const replyText = data.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response.";
 
     return NextResponse.json({ reply: replyText });
 

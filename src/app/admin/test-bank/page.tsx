@@ -145,7 +145,7 @@ export default function TestBankPage() {
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginBottom: '0.25rem' }}>Test Name</label>
                 <input type="text" required value={newTest.name} onChange={e => setNewTest({ ...newTest, name: e.target.value })} className="input-field" placeholder="e.g. DSAT Practice 4" />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginBottom: '0.25rem' }}>Subject</label>
                   <select value={newTest.subject} onChange={e => setNewTest({ ...newTest, subject: e.target.value })} className="input-field">
@@ -157,6 +157,10 @@ export default function TestBankPage() {
                 <div>
                   <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginBottom: '0.25rem' }}>Questions</label>
                   <input type="number" required value={newTest.questions} onChange={e => setNewTest({ ...newTest, questions: parseInt(e.target.value) || 0 })} className="input-field" />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginBottom: '0.25rem' }}>Time (Mins)</label>
+                  <input type="number" value={(newTest as any).customTime || ''} onChange={e => setNewTest({ ...newTest, customTime: parseInt(e.target.value) || undefined } as any)} className="input-field" placeholder="Default" />
                 </div>
               </div>
               <div>

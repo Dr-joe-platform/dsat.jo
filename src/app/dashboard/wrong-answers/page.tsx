@@ -5,9 +5,10 @@ import { LATEX_DELIMITERS } from '@/components/AnnotatableText';
 import Link from 'next/link';
 import { AlertTriangle, ChevronRight, ChevronDown, RefreshCw, Bot, Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { getUserResults, TestResult } from '@/lib/db';
+import { getUserResults, getTestById, getMiniQuizById, TestResult } from '@/lib/db';
 import { ALL_TEST_QUESTIONS, DSATQuestion } from '@/lib/questions-data';
 import Latex from 'react-latex-next';
+import WhiteboardStep from '@/components/WhiteboardStep';
 
 interface WrongQuestion {
   id: string;
@@ -15,6 +16,7 @@ interface WrongQuestion {
   testName: string;
   question: DSATQuestion | null;
   date: string;
+  userAnswer?: string;
 }
 
 export default function WrongAnswersPage() {
@@ -31,6 +33,12 @@ export default function WrongAnswersPage() {
 
   const fetchExplanation = async (wq: WrongQuestion) => {
     if (!wq.question) return;
+    
+    if (wq.question.explanation) {
+      setExplanations(prev => ({ ...prev, [wq.id]: wq.question.explanation }));
+      return;
+    }
+
     setLoadingExplanation(prev => ({ ...prev, [wq.id]: true }));
     try {
       const res = await fetch('/api/ai-explain', {
@@ -49,55 +57,163 @@ export default function WrongAnswersPage() {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoadingExplanation(prev => ({ ...prev, [wq.id]: false }));
     }
-    setLoadingExplanation(prev => ({ ...prev, [wq.id]: false }));
   };
 
   useEffect(() => {
     if (!appUser?.uid) return;
-    getUserResults(appUser.uid).then(results => {
-      const questions: WrongQuestion[] = [];
-      const seen = new Set<string>();
+    const loadQuestions = async () => {
+      try {
+        const results = await getUserResults(appUser.uid);
+        const questions: WrongQuestion[] = [];
+        const seen = new Set<string>();
 
-      // Pre-build a map of all questions for O(1) lookup (especially useful for mini-quizzes that pull from random tests)
-      const allQuestionsMap = new Map<string, DSATQuestion>();
-      Object.values(ALL_TEST_QUESTIONS).forEach(td => {
-        ['M1', 'M2H', 'M2E'].forEach(mod => {
-          td[mod as 'M1'|'M2H'|'M2E']?.forEach(q => allQuestionsMap.set(q.id, q));
-        });
-      });
-
-      results.forEach(r => {
-        r.wrongQuestionIds?.forEach(qid => {
-          if (seen.has(qid)) return;
-          seen.add(qid);
-          // Find the actual question from our questions data
-          let found: DSATQuestion | undefined | null = null;
-          
-          const testData = ALL_TEST_QUESTIONS[r.testId as keyof typeof ALL_TEST_QUESTIONS];
-          if (testData) {
-            for (const mod of ['M1', 'M2H', 'M2E'] as const) {
-              const q = testData[mod]?.find(q => q.id === qid);
-              if (q) { found = q; break; }
+        // Pre-build a map of all questions for O(1) lookup
+        const allQuestionsMap = new Map<string, DSATQuestion>();
+        Object.values(ALL_TEST_QUESTIONS).forEach(td => {
+          ['M1', 'M2H', 'M2E', 'MATH_M1', 'MATH_M2H', 'MATH_M2E'].forEach(mod => {
+            const qs = td[mod as keyof typeof td];
+            if (qs && Array.isArray(qs)) {
+              qs.forEach(q => allQuestionsMap.set(q.id, q));
             }
-          }
-          
-          if (!found) {
-            found = allQuestionsMap.get(qid);
-          }
-
-          questions.push({
-            id: qid,
-            testId: r.testId,
-            testName: r.testName,
-            question: found || null,
-            date: r.completedAt?.toDate?.()?.toLocaleDateString?.() ?? '',
           });
         });
-      });
-      setWrongQs(questions);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+
+        // Collect custom tests to fetch
+        const customTestIds = new Set<string>();
+        results.forEach(r => {
+          if (r.testId && !ALL_TEST_QUESTIONS[r.testId as keyof typeof ALL_TEST_QUESTIONS]) {
+            customTestIds.add(r.testId);
+          }
+        });
+
+        const customTestsMap = new Map<string, any>();
+        for (const tid of customTestIds) {
+          if (!tid) continue;
+            try {
+              const t = await getTestById(tid);
+              if (t) {
+                if ((t as any).content) {
+                  const parsed = JSON.parse((t as any).content);
+                  const isFullTest = (t as any).subject === 'Full';
+                  const m1: any[] = [];
+                  const m2h: any[] = [];
+                  const mathM1: any[] = [];
+                  const mathM2h: any[] = [];
+                  parsed.forEach((q: any) => {
+                    let cleanQuestion = q.question || '';
+                    cleanQuestion = cleanQuestion.replace(/!\[.*?\]\((.*?)\)/g, '').trim();
+                    cleanQuestion = cleanQuestion.replace(/\[.*?\]\((.*?)\)/g, '').trim();
+                    cleanQuestion = cleanQuestion.replace(/(https?:\/\/[^\s]+)/g, '').trim();
+
+                    const formattedQ = {
+                      id: q.id || `custom-${Math.random()}`,
+                      domain: q.domain || '',
+                      skill: q.skill || '',
+                      text: cleanQuestion,
+                      passage: q.passage || null,
+                      imageUrl: q.imageUrl || q.image || null,
+                      question: cleanQuestion,
+                      options: q.options && q.options.length > 0 ? q.options : undefined,
+                      correctAnswer: q.correctAnswer || (q.options ? ['A','B','C','D'][q.answer || 0] : ''),
+                      explanation: q.explanation || '',
+                      type: (q.type === 'MCQ' || q.type === 'MC') ? 'MC' : (q.options && q.options.length > 0 ? 'MC' : 'SPR')
+                    };
+                    
+                    if (isFullTest) {
+                      if (q.module === 'M1') m1.push(formattedQ);
+                      else if (q.module === 'M2H' || q.module === 'M2E' || q.module === 'M2') m2h.push(formattedQ);
+                      else if (q.module === 'MATH_M1') mathM1.push(formattedQ);
+                      else if (q.module === 'MATH_M2H' || q.module === 'MATH_M2') mathM2h.push(formattedQ);
+                      else m1.push(formattedQ);
+                    } else {
+                      if (String(q.module).includes('1') || String(q.module).toUpperCase().includes('M1')) m1.push(formattedQ);
+                      else if (String(q.module).includes('2') || String(q.module).toUpperCase().includes('M2')) m2h.push(formattedQ);
+                      else m1.push(formattedQ);
+                    }
+                  });
+                  customTestsMap.set(tid, {
+                    M1: m1,
+                    M2H: m2h,
+                    M2E: [],
+                    MATH_M1: mathM1,
+                    MATH_M2H: mathM2h,
+                    MATH_M2E: []
+                  });
+                } else {
+                  customTestsMap.set(tid, t);
+                }
+              } else {
+              const mq = await getMiniQuizById(tid);
+              if (mq) {
+                const formattedMq = (mq.questions || []).map((q: any, i: number) => ({
+                  id: `mini-${tid}-${i}`,
+                  text: q.question,
+                  options: q.options && q.options.length > 0 && q.options.some((o: string) => o.trim()) ? q.options : undefined,
+                  correctAnswer: q.options && q.options.length > 0 && q.options.some((o: string) => o.trim()) ? ['A','B','C','D'][q.answer || 0] : q.answer,
+                  type: q.options && q.options.length > 0 && q.options.some((o: string) => o.trim()) ? 'MC' : 'SPR'
+                }));
+                customTestsMap.set(tid, {
+                  M1: formattedMq,
+                  M2H: [],
+                  M2E: []
+                });
+              }
+            }
+          } catch (fetchErr) {
+            console.error(`Error fetching custom test ${tid}:`, fetchErr);
+          }
+        }
+
+        results.forEach(r => {
+          r.wrongQuestionIds?.forEach(qid => {
+            if (seen.has(qid)) return;
+            seen.add(qid);
+            
+            let found: DSATQuestion | undefined | null = null;
+            let userAnswer: string | undefined;
+            
+            const testData = ALL_TEST_QUESTIONS[r.testId as keyof typeof ALL_TEST_QUESTIONS] || customTestsMap.get(r.testId);
+            
+            if (testData) {
+              const modules = ['M1', 'M2H', 'M2E', 'MATH_M1', 'MATH_M2H', 'MATH_M2E'] as const;
+              for (const mod of modules) {
+                const qs = testData[mod as keyof typeof testData];
+                if (qs && Array.isArray(qs)) {
+                  const idx = qs.findIndex((q: any) => q.id === qid);
+                  if (idx !== -1) {
+                    found = qs[idx];
+                    userAnswer = r.answers?.[mod]?.[idx] || r.sprAnswers?.[`spr${mod}`]?.[idx];
+                    break;
+                  }
+                }
+              }
+            }
+            
+            if (!found) {
+              found = allQuestionsMap.get(qid);
+            }
+
+            questions.push({
+              id: qid,
+              testId: r.testId,
+              testName: r.testName,
+              question: found || null,
+              date: r.completedAt?.toDate?.()?.toLocaleDateString?.() ?? '',
+              userAnswer,
+            });
+          });
+        });
+        setWrongQs(questions);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error loading wrong questions:", err);
+        setLoading(false);
+      }
+    };
+    loadQuestions();
   }, [appUser?.uid]);
 
   return (
@@ -177,41 +293,70 @@ export default function WrongAnswersPage() {
                   <p style={{ color: '#0f172a', fontSize: '0.875rem', lineHeight: '1.65', marginBottom: '1rem', fontWeight: wq.question.passage ? '700' : '400' }}>
                     <Latex delimiters={LATEX_DELIMITERS} strict={false}>{wq.question.text}</Latex>
                   </p>
+                  {wq.question.imageUrl && (
+                    <div style={{ marginBottom: '1.25rem', textAlign: 'center' }}>
+                      <img src={wq.question.imageUrl} alt="Question figure" style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }} />
+                    </div>
+                  )}
                   {wq.question.type === 'MC' && wq.question.options && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
                       {wq.question.options.map((opt, oi) => {
                         const letter = 'ABCD'[oi];
                         const isCorrect = letter === wq.question!.correctAnswer;
+                        const isStudentAnswer = letter === wq.userAnswer;
+                        
+                        let bgColor = '#f8fafc';
+                        let borderColor = '#f1f5f9';
+                        let textColor = '#475569';
+                        let letterColor = '#94a3b8';
+                        
+                        if (isCorrect) {
+                          bgColor = '#dcfce7';
+                          borderColor = '#86efac';
+                          textColor = '#166534';
+                          letterColor = '#16a34a';
+                        } else if (isStudentAnswer) {
+                          bgColor = '#fee2e2';
+                          borderColor = '#fca5a5';
+                          textColor = '#991b1b';
+                          letterColor = '#dc2626';
+                        }
+
                         return (
                           <div key={oi} style={{
                             padding: '0.5rem 0.875rem', borderRadius: '0.5rem',
-                            background: isCorrect ? '#dcfce7' : '#f8fafc',
-                            border: `1px solid ${isCorrect ? '#86efac' : '#f1f5f9'}`,
+                            background: bgColor,
+                            border: `1px solid ${borderColor}`,
                             display: 'flex', alignItems: 'center', gap: '0.625rem',
                           }}>
-                            <span style={{ fontWeight: '700', fontSize: '0.78rem', color: isCorrect ? '#16a34a' : '#94a3b8', flexShrink: 0 }}>{letter}.</span>
-                            <span style={{ fontSize: '0.82rem', color: isCorrect ? '#166534' : '#475569' }}>
+                            <span style={{ fontWeight: '700', fontSize: '0.78rem', color: letterColor, flexShrink: 0 }}>{letter}.</span>
+                            <span style={{ fontSize: '0.82rem', color: textColor }}>
                               <Latex delimiters={LATEX_DELIMITERS} strict={false}>{opt}</Latex>
                             </span>
                             {isCorrect && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: '#16a34a', fontWeight: '700' }}>✓ Correct</span>}
+                            {isStudentAnswer && !isCorrect && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: '#dc2626', fontWeight: '700' }}>✗ Your Answer</span>}
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                  {wq.question.type === 'SPR' && (
+                    <div style={{ marginTop: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>Correct Answer:</span>
+                        <span style={{ fontSize: '0.85rem', color: '#16a34a', fontWeight: '700' }}>{wq.question.correctAnswer}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>Your Answer:</span>
+                        <span style={{ fontSize: '0.85rem', color: '#dc2626', fontWeight: '700' }}>{wq.userAnswer || '(None)'}</span>
+                      </div>
                     </div>
                   )}
                   
                   {/* AI Explanation Section */}
                   <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid #f1f5f9' }}>
                     {explanations[wq.id] ? (
-                      <div style={{ padding: '1.25rem', background: '#f8fafc', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                          <Bot size={16} color="#6366f1" />
-                          <h4 style={{ fontSize: '0.85rem', fontWeight: '800', color: '#0f172a' }}>AI Tutor Explanation</h4>
-                        </div>
-                        <div style={{ fontSize: '0.85rem', color: '#334155', lineHeight: '1.6' }}>
-                          <Latex delimiters={LATEX_DELIMITERS} strict={false}>{explanations[wq.id]}</Latex>
-                        </div>
-                      </div>
+                      <WhiteboardStep explanationText={explanations[wq.id]} />
                     ) : (
                       <button 
                         onClick={() => fetchExplanation(wq)}
@@ -225,7 +370,12 @@ export default function WrongAnswersPage() {
                   </div>
                 </>
               ) : (
-                <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Question ID: {wq.id}</p>
+                <div style={{ padding: '1rem', background: '#fee2e2', color: '#991b1b', borderRadius: '0.5rem', border: '1px solid #fca5a5' }}>
+                  <strong>Content not found!</strong><br />
+                  Please tell me: <br />
+                  Question ID: <code>{wq.id}</code><br />
+                  Test ID: <code>{wq.testId}</code>
+                </div>
               )}
             </div>
           ))}

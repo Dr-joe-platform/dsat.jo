@@ -34,8 +34,10 @@ export default function SignupPage() {
     const extra: any = {};
     if (phoneRef.current?.value.trim()) extra.phone = phoneRef.current.value.trim();
     if (referredByRef.current?.value.trim()) {
-      extra.referredBy = referredByRef.current.value.trim();
-      extra.teacherCode = extra.referredBy; // Keep backward compatibility for teacherCode
+      const rawCodes = referredByRef.current.value.trim();
+      extra.referredBy = rawCodes; // Keep backward compatibility for teacherCode
+      extra.teacherCode = rawCodes;
+      extra.teacherCodes = rawCodes.split(',').map(c => c.trim()).filter(Boolean);
     }
 
     if (role === 'student') {
@@ -77,7 +79,7 @@ export default function SignupPage() {
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
           <div style={{ width: '52px', height: '52px', background: '#0f172a', borderRadius: '0.875rem', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', boxShadow: '0 4px 12px rgba(15,23,42,0.2)' }}>
-            <span style={{ color: '#fff', fontWeight: '900', fontStyle: 'italic', fontSize: '1.375rem' }}>D</span>
+            <span style={{ color: '#fff', fontWeight: '900', fontStyle: 'italic', fontSize: '1.375rem', letterSpacing: '-1px' }}>JO</span>
           </div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', marginBottom: '0.25rem', letterSpacing: '-0.5px' }}>Create your account</h1>
           <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Join DSAT.JO and start your SAT journey</p>
@@ -165,20 +167,18 @@ export default function SignupPage() {
           {role === 'student' && (
             <>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#475569', marginBottom: '0.5rem', letterSpacing: '0.02em' }}>SUBJECT <span style={{ color: '#ef4444' }}>*</span></label>
-                <select ref={studentSubjectRef} required className="input-field" style={{ cursor: 'pointer' }}>
-                  <option value="math">📐 Math</option>
-                  <option value="english">📖 English</option>
-                  <option value="both">📚 Both (Math &amp; English)</option>
-                </select>
-                <p style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.375rem' }}>Choose the subject your teacher teaches you.</p>
-              </div>
-              <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#475569', marginBottom: '0.5rem', letterSpacing: '0.02em' }}>PARENT PHONE <span style={{ color: '#94a3b8', fontWeight: '400' }}>(optional)</span></label>
                 <div style={{ position: 'relative' }}>
                   <Phone size={15} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                   <input ref={parentPhoneRef} type="tel" id="signup-parent-phone" placeholder="+20 100 000 0000" className="input-field" style={{ paddingLeft: '2.75rem' }} />
                 </div>
+              </div>
+
+              {/* Referral Code / Teacher Code */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#475569', marginBottom: '0.5rem', letterSpacing: '0.02em' }}>TEACHER CODES <span style={{ color: '#94a3b8', fontWeight: '400' }}>(optional)</span></label>
+                <input ref={referredByRef} type="text" id="signup-referral" placeholder="e.g. TCH-MATH, TCH-ENG" className="input-field" />
+                <p style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.375rem' }}>If you have multiple teachers, separate their codes with commas.</p>
               </div>
             </>
           )}
@@ -195,12 +195,6 @@ export default function SignupPage() {
             </div>
           )}
 
-          {/* Referral Code / Teacher Code */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#475569', marginBottom: '0.5rem', letterSpacing: '0.02em' }}>REFERRAL / TEACHER CODE <span style={{ color: '#94a3b8', fontWeight: '400' }}>(optional)</span></label>
-            <input ref={referredByRef} type="text" id="signup-referral" placeholder="e.g. TCH-ABC123" className="input-field" />
-            <p style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.375rem' }}>If someone invited you, enter their code here.</p>
-          </div>
 
           {/* Note about approval */}
           <div style={{ padding: '0.75rem 1rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '0.5rem', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>

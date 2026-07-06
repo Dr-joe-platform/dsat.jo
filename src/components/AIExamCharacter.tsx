@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bot, X, HelpCircle, Loader2, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import Latex from 'react-latex-next';
 import 'katex/dist/katex.min.css';
-import AnimatedRobot from './AnimatedRobot';
 import { motion } from 'framer-motion';
 
 interface AIExamCharacterProps {
@@ -69,7 +68,7 @@ export default function AIExamCharacter({ phase, currentQuestion, activeHelpsLef
       const data = await res.json();
       setMessage(data.reply);
     } catch (err) {
-      console.error(err);
+      console.warn(err);
       setMessage("I'm having trouble connecting right now. Let's try again later!");
     } finally {
       setIsLoading(false);
@@ -91,8 +90,8 @@ export default function AIExamCharacter({ phase, currentQuestion, activeHelpsLef
   if (phase === 'intro') {
     return (
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.5rem', marginTop: '2rem', padding: '1.5rem', background: '#f8fafc', borderRadius: '1rem', border: '1px solid #e2e8f0' }}>
-        <div style={{ width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <AnimatedRobot size={80} />
+        <div style={{ width: '80px', height: '80px', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%' }}>
+          <Bot size={40} color="#4338ca" />
         </div>
         <div style={{ flex: 1, position: 'relative', background: '#fff', padding: '1.25rem', borderRadius: '1rem', borderTopLeftRadius: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
           {/* Speech bubble arrow */}
@@ -136,8 +135,8 @@ export default function AIExamCharacter({ phase, currentQuestion, activeHelpsLef
           onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05) translateY(-5px)'}
           onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
         >
-          <div style={{ pointerEvents: 'none' }}>
-            <AnimatedRobot size={100} />
+          <div style={{ pointerEvents: 'none', width: '90px', height: '90px', background: '#e0e7ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '4px solid #fff', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+            <Bot size={45} color="#4338ca" />
           </div>
         </div>
       </motion.div>
@@ -153,8 +152,8 @@ export default function AIExamCharacter({ phase, currentQuestion, activeHelpsLef
       {/* Header */}
       <div style={{ padding: '1rem', background: 'linear-gradient(135deg, #1e293b, #0f172a)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#fff' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <AnimatedRobot size={50} />
+          <div style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}>
+            <Bot size={24} color="#fff" />
           </div>
           <div>
             <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>AI Assistant</div>

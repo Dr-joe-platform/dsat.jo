@@ -7,6 +7,7 @@ import { storage } from '@/lib/firebase';
 import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import ImageUploader from '@/components/ImageUploader';
 
 interface Ebook {
   id: string;
@@ -20,6 +21,7 @@ interface Ebook {
   downloadUrl: string;
   storagePath?: string;
   teacherId: string;
+  coverUrl?: string;
 }
 
 export default function TeacherEbooksPage() {
@@ -29,7 +31,7 @@ export default function TeacherEbooksPage() {
   const [showForm, setShowForm] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [form, setForm] = useState({ title: '', author: '', subject: 'Math', emoji: '📚', pages: '' });
+  const [form, setForm] = useState({ title: '', author: '', subject: 'Math', emoji: '📚', pages: '', coverUrl: '' });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -100,10 +102,11 @@ export default function TeacherEbooksPage() {
         downloadUrl,
         storagePath: path,
         teacherId: appUser!.uid,
+        coverUrl: form.coverUrl || '',
         createdAt: serverTimestamp()
       });
 
-      setForm({ title: '', author: '', subject: 'Math', emoji: '📚', pages: '' });
+      setForm({ title: '', author: '', subject: 'Math', emoji: '📚', pages: '', coverUrl: '' });
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       setShowForm(false);
@@ -165,9 +168,9 @@ export default function TeacherEbooksPage() {
             <div>
               <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#475569', marginBottom: '0.375rem' }}>Subject</label>
               <select value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} className="input-field">
-                <option>Math</option>
-                <option>English</option>
-                <option>Both</option>
+                {(!appUser?.teacherSubject || appUser.teacherSubject === 'Both' || appUser.teacherSubject === 'Math') && <option>Math</option>}
+                {(!appUser?.teacherSubject || appUser.teacherSubject === 'Both' || appUser.teacherSubject === 'English') && <option>English</option>}
+                {(!appUser?.teacherSubject || appUser.teacherSubject === 'Both') && <option>Both</option>}
               </select>
             </div>
             <div>
@@ -212,6 +215,18 @@ export default function TeacherEbooksPage() {
               <div style={{ background: '#ede9fe', borderRadius: '999px', height: '6px', overflow: 'hidden' }}>
                 <div style={{ background: '#7c3aed', height: '100%', width: `${uploadProgress}%`, transition: 'width 0.3s' }} />
               </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Cover Image (Optional)</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  {form.coverUrl && (
+                    <img src={form.coverUrl} alt="Cover Preview" style={{ width: '60px', height: '80px', objectFit: 'cover', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }} />
+                  )}
+                  <ImageUploader 
+                    onUpload={(url) => setForm({ ...form, coverUrl: url })}
+                    buttonText="Upload Cover"
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -233,9 +248,13 @@ export default function TeacherEbooksPage() {
           {books.map(book => (
             <div key={book.id} className="stat-card" style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', marginBottom: '0.875rem' }}>
-                <div style={{ width: '48px', height: '60px', borderRadius: '0.5rem', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', flexShrink: 0 }}>
-                  {book.emoji}
-                </div>
+                {book.coverUrl ? (
+                  <img src={book.coverUrl} alt={book.title} style={{ width: '48px', height: '60px', objectFit: 'cover', borderRadius: '0.5rem', border: '1px solid #cbd5e1', flexShrink: 0 }} />
+                ) : (
+                  <div style={{ width: '48px', height: '60px', borderRadius: '0.5rem', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', flexShrink: 0 }}>
+                    {book.emoji}
+                  </div>
+                )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '0.875rem', lineHeight: '1.3', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                     {book.title}

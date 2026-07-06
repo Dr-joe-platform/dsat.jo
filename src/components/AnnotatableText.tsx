@@ -131,10 +131,23 @@ export default function AnnotatableText({ text, annotations, onAddAnnotation, on
     }
   };
 
+  const renderWithImages = (content: string) => {
+    if (!content) return null;
+    const parts = content.split(/(!\[.*?\]\([^)]+\))/g);
+    return parts.map((part, index) => {
+      if (!part) return null;
+      const match = part.match(/!\[.*?\]\(([^)]+)\)/);
+      if (match) {
+        return <img key={index} src={match[1]} alt="inline figure" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '0.5rem', display: 'block', margin: '1rem auto', border: '1px solid #cbd5e1' }} />;
+      }
+      return disableLatex ? part : <Latex key={index} delimiters={LATEX_DELIMITERS} strict={false}>{part}</Latex>;
+    });
+  };
+
   // Render text with highlights
   const renderText = () => {
     if (!annotations || annotations.length === 0) {
-      return disableLatex ? text : <Latex delimiters={LATEX_DELIMITERS} strict={false}>{text}</Latex>;
+      return renderWithImages(text);
     }
 
     let segments: { text: string; annotation?: HighlightAnnotation }[] = [];
@@ -173,11 +186,11 @@ export default function AnnotatableText({ text, annotations, onAddAnnotation, on
             onClick={() => onRemoveAnnotation(seg.annotation!.id)}
             title="Click to remove highlight"
           >
-            {disableLatex ? seg.text : <Latex delimiters={LATEX_DELIMITERS} strict={false}>{seg.text}</Latex>}
+            {renderWithImages(seg.text)}
           </mark>
         );
       }
-      return <span key={i}>{disableLatex ? seg.text : <Latex delimiters={LATEX_DELIMITERS} strict={false}>{seg.text}</Latex>}</span>;
+      return <span key={i}>{renderWithImages(seg.text)}</span>;
     });
   };
 

@@ -4,14 +4,19 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, Loader2, Check } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { addVocabWord } from '@/lib/db';
+import { usePathname } from 'next/navigation';
 
 export default function TextSelectionTooltip() {
+  const pathname = usePathname();
   const { appUser } = useAuth();
   const [selection, setSelection] = useState('');
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  // Restrict to dashboard and test pages only
+  const isAllowedPath = pathname?.startsWith('/dashboard') || pathname?.startsWith('/test');
 
   useEffect(() => {
     const handleMouseUp = (e: MouseEvent) => {
@@ -89,7 +94,7 @@ export default function TextSelectionTooltip() {
     }
   };
 
-  if (!show || !appUser) return null;
+  if (!show || !appUser || !isAllowedPath) return null;
 
   return (
     <div

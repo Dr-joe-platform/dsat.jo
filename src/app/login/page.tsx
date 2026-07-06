@@ -57,7 +57,7 @@ export default function LoginPage() {
             margin: '0 auto 1.25rem',
             boxShadow: '0 4px 12px rgba(15,23,42,0.2)',
           }}>
-            <span style={{ color: '#fff', fontWeight: '900', fontStyle: 'italic', fontSize: '1.375rem' }}>D</span>
+            <span style={{ color: '#fff', fontWeight: '900', fontStyle: 'italic', fontSize: '1.375rem', letterSpacing: '-1px' }}>JO</span>
           </div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', marginBottom: '0.375rem', letterSpacing: '-0.5px' }}>
             Welcome back

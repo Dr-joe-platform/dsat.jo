@@ -87,7 +87,7 @@ export default function ResultsPage() {
 
   const totalTests = results.length;
   const bestScore = totalTests > 0 ? Math.max(...results.map(r => r.totalScore)) : 0;
-  const avgScore = totalTests > 0 ? Math.round(results.reduce((s, r) => s + r.totalScore, 0) / totalTests) : 0;
+  const avgScore = totalTests > 0 ? Math.round((results.reduce((s, r) => s + r.totalScore, 0) / totalTests) / 10) * 10 : 0;
   const totalCorrect = results.reduce((s, r) => s + r.correctCount, 0);
   const totalQs = results.reduce((s, r) => s + r.correctCount + r.wrongCount, 0);
   const accuracy = totalQs > 0 ? Math.round((totalCorrect / totalQs) * 100) : 0;

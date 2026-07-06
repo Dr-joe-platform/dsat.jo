@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { MiniQuiz, QuizQuestion, getMiniQuizzes, addMiniQuiz, updateMiniQuiz, deleteMiniQuiz } from '@/lib/db';
 import { downloadCSVTemplate, parseQuestionsCSV } from '@/lib/csv-parser';
-import { Zap, Plus, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, Check, Save } from 'lucide-react';
+import { Zap, Plus, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, Check, Save, Edit2 } from 'lucide-react';
+import ImageUploader from '@/components/ImageUploader';
 
 export default function MiniQuizzesPage() {
   const { appUser } = useAuth();
@@ -14,8 +15,9 @@ export default function MiniQuizzesPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   
-  // Adding questions
+  // Adding/Editing questions
   const [addingQuestionTo, setAddingQuestionTo] = useState<string | null>(null);
+  const [editingQuestionIndex, setEditingQuestionIndex] = useState<number | null>(null);
   const [newQuestion, setNewQuestion] = useState('');
   const [newOptions, setNewOptions] = useState(['', '', '', '']);
   const [newAnswerIndex, setNewAnswerIndex] = useState(0);
@@ -62,6 +64,7 @@ export default function MiniQuizzesPage() {
     try {
       await addMiniQuiz({
         teacherId: appUser!.uid,
+        teacherName: appUser!.displayName || 'Teacher',
         title: newTitle,
         subject: appUser!.teacherSubject || 'Both',
         questions: [],
@@ -83,13 +86,24 @@ export default function MiniQuizzesPage() {
     }
     
     try {
-      const updatedQuestions = [...quiz.questions, {
-        question: newQuestion,
-        options: newOptions,
-        answer: newAnswerIndex
-      }];
+      let updatedQuestions = [...quiz.questions];
+      if (editingQuestionIndex !== null) {
+        updatedQuestions[editingQuestionIndex] = {
+          question: newQuestion,
+          options: newOptions,
+          answer: newAnswerIndex
+        };
+      } else {
+        updatedQuestions.push({
+          question: newQuestion,
+          options: newOptions,
+          answer: newAnswerIndex
+        });
+      }
+      
       await updateMiniQuiz(quiz.id, { questions: updatedQuestions });
       setAddingQuestionTo(null);
+      setEditingQuestionIndex(null);
       setNewQuestion('');
       setNewOptions(['', '', '', '']);
       setNewAnswerIndex(0);
@@ -213,8 +227,17 @@ export default function MiniQuizzesPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
                       {quiz.questions.map((q, i) => (
                         <div key={i} style={{ padding: '0.875rem', background: '#f8fafc', borderRadius: '0.5rem', position: 'relative' }}>
-                          <button onClick={() => handleDeleteQuestion(quiz, i)} style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><Trash2 size={14} /></button>
-                          <p style={{ fontWeight: '600', color: '#0f172a', fontSize: '0.875rem', marginBottom: '0.5rem', paddingRight: '2rem' }}>Q{i + 1}. {q.question}</p>
+                          <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+                            <button onClick={() => {
+                              setAddingQuestionTo(quiz.id!);
+                              setEditingQuestionIndex(i);
+                              setNewQuestion(q.question);
+                              setNewOptions([...q.options]);
+                              setNewAnswerIndex(q.answer);
+                            }} style={{ color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer' }}><Edit2 size={14} /></button>
+                            <button onClick={() => handleDeleteQuestion(quiz, i)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                          </div>
+                          <p style={{ fontWeight: '600', color: '#0f172a', fontSize: '0.875rem', marginBottom: '0.5rem', paddingRight: '4rem', whiteSpace: 'pre-wrap' }}>Q{i + 1}. {q.question}</p>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.25rem' }}>
                             {q.options.map((opt, oi) => (
                               <div key={oi} style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem', borderRadius: '0.25rem', background: oi === q.answer ? '#dcfce7' : 'transparent', color: oi === q.answer ? '#16a34a' : '#475569', fontWeight: oi === q.answer ? '700' : '400', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -227,11 +250,11 @@ export default function MiniQuizzesPage() {
                     </div>
                   )}
 
-                  {/* Add Question Form */}
+                  {/* Add/Edit Question Form */}
                   {addingQuestionTo === quiz.id ? (
                     <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1rem', marginTop: '1rem' }}>
-                      <h4 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '1rem' }}>Add Question</h4>
-                      <input value={newQuestion} onChange={e => setNewQuestion(e.target.value)} placeholder="Enter question..." style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', marginBottom: '1rem' }} />
+                      <h4 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '1rem' }}>{editingQuestionIndex !== null ? 'Edit Question' : 'Add Question'}</h4>
+                      <textarea value={newQuestion} onChange={e => setNewQuestion(e.target.value)} placeholder="Enter question..." style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', marginBottom: '1rem', minHeight: '80px', resize: 'vertical' }} />
                       
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
                         {newOptions.map((opt, oi) => (
@@ -246,9 +269,20 @@ export default function MiniQuizzesPage() {
                         ))}
                       </div>
 
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button onClick={() => handleSaveQuestion(quiz)} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer' }}>Save Question</button>
-                        <button onClick={() => setAddingQuestionTo(null)} style={{ padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer' }}>Cancel</button>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button onClick={() => handleSaveQuestion(quiz)} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer' }}>Save Question</button>
+                          <button onClick={() => {
+                            setAddingQuestionTo(null);
+                            setEditingQuestionIndex(null);
+                          }} style={{ padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer' }}>Cancel</button>
+                        </div>
+                        <ImageUploader 
+                          onUpload={(url) => {
+                            setNewQuestion(prev => prev + `\n\n![Image](${url})`);
+                          }}
+                          buttonText="Attach Image"
+                        />
                       </div>
                     </div>
                   ) : (
@@ -260,12 +294,16 @@ export default function MiniQuizzesPage() {
                         <Plus size={14} /> Import CSV
                         <input type="file" accept=".csv" style={{ display: 'none' }} onChange={e => handleCSVUploadForQuiz(quiz, e)} />
                       </label>
-                      <button onClick={() => downloadCSVTemplate('Math')} style={{ padding: '0.5rem 0.75rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '0.5rem', fontWeight: '600', fontSize: '0.75rem', cursor: 'pointer' }}>
-                        📐 Math Template
-                      </button>
-                      <button onClick={() => downloadCSVTemplate('English')} style={{ padding: '0.5rem 0.75rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '0.5rem', fontWeight: '600', fontSize: '0.75rem', cursor: 'pointer' }}>
-                        📖 English Template
-                      </button>
+                      {(!appUser?.teacherSubject || appUser.teacherSubject === 'Both' || appUser.teacherSubject === 'Math') && (
+                        <button onClick={() => downloadCSVTemplate('Math')} style={{ padding: '0.5rem 0.75rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '0.5rem', fontWeight: '600', fontSize: '0.75rem', cursor: 'pointer' }}>
+                          📐 Math Template
+                        </button>
+                      )}
+                      {(!appUser?.teacherSubject || appUser.teacherSubject === 'Both' || appUser.teacherSubject === 'English') && (
+                        <button onClick={() => downloadCSVTemplate('English')} style={{ padding: '0.5rem 0.75rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '0.5rem', fontWeight: '600', fontSize: '0.75rem', cursor: 'pointer' }}>
+                          📖 English Template
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

@@ -197,7 +197,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <TextSelectionTooltip />
       <GlobalVocabWidget />
-
       {/* ── SIDEBAR ── */}
       <aside className="sidebar no-print" style={{
         width: collapsed ? '68px' : '256px',

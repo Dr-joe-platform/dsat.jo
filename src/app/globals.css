@@ -1,46 +1,50 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 /* ============================
-   DESIGN TOKENS
+   DESIGN TOKENS (Dark Premium)
    ============================ */
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --primary: #0f172a;
-  --primary-foreground: #ffffff;
-  --secondary: #f8fafc;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --border: #e2e8f0;
-  --card: #ffffff;
-  --card-border: rgba(226, 232, 240, 0.8);
-  --accent: #6366f1;
-  --accent-light: rgba(99, 102, 241, 0.08);
-  --success: #22c55e;
+  --background: #000000;
+  --foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #000000;
+  --secondary: #111111;
+  --secondary-foreground: #ffffff;
+  --muted: #1a1a1a;
+  --muted-foreground: #a1a1aa;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-glow: rgba(255, 255, 255, 0.2);
+  --card: rgba(10, 10, 10, 0.6);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --accent: #3b82f6; /* Subtle glowing blue accent */
+  --accent-light: rgba(59, 130, 246, 0.15);
+  --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
-  --radius: 0.75rem;
-  --radius-lg: 1.25rem;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
-  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.12);
+  --radius: 12px;
+  --radius-lg: 24px;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.8);
+  --shadow-lg: 0 20px 40px -5px rgba(0, 0, 0, 0.8);
+  --shadow-glow: 0 0 20px rgba(255, 255, 255, 0.05);
 }
 
 .dark {
-  --background: #0f172a;
-  --foreground: #f8fafc;
+  /* Inherit the same since we force dark mode on root for this design */
+  --background: #000000;
+  --foreground: #ffffff;
   --primary: #ffffff;
-  --primary-foreground: #0f172a;
-  --secondary: #1e293b;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
-  --border: #334155;
-  --card: #1e293b;
-  --card-border: rgba(51, 65, 85, 0.8);
-  --accent: #818cf8;
-  --accent-light: rgba(129, 140, 248, 0.15);
+  --primary-foreground: #000000;
+  --secondary: #111111;
+  --secondary-foreground: #ffffff;
+  --muted: #1a1a1a;
+  --muted-foreground: #a1a1aa;
+  --border: rgba(255, 255, 255, 0.1);
+  --card: rgba(10, 10, 10, 0.6);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --accent: #3b82f6;
+  --accent-light: rgba(59, 130, 246, 0.15);
 }
 
 /* ============================

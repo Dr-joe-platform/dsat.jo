@@ -16,6 +16,7 @@ export interface DSATQuestion {
   skill?: string;
   domain?: string;
   explanation?: string;
+  _subject?: string; // Appended by questions-pool
 }
 
 export interface DSATTestData {

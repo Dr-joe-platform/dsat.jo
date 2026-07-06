@@ -3,22 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { Library, Download, Eye, FileText, BookOpen, Search, Filter } from 'lucide-react';
 
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getEbooks } from '@/lib/db';
 import { useAuth } from '@/lib/auth-context';
 
-interface Ebook {
-  id: string;
-  title: string;
-  author: string;
-  description: string;
-  subject: string;
-  pages: number;
-  size: string;
-  emoji: string;
-  downloadUrl: string;
-}
-
+import { Ebook } from '@/lib/db';
 const subjectColor = (s: string) => {
   if (s === 'Math') return { bg: '#dbeafe', color: '#1d4ed8' };
   if (s === 'R&W') return { bg: '#f3e8ff', color: '#7c3aed' };
@@ -43,23 +31,12 @@ export default function EbooksPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const { getDocs, collection } = await import('firebase/firestore');
-        const snap = await getDocs(collection(db, 'ebooks'));
-        const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Ebook));
-        
-        // Filter out ebooks not matching student's subject if needed
-        const filtered = data.filter(b => {
-          if (!appUser?.subject || appUser.subject === 'both') return true;
-          if (b.subject === 'General' || b.subject === 'Both') return true;
-          if (appUser.subject === 'math') return b.subject === 'Math';
-          if (appUser.subject === 'english') return b.subject === 'R&W' || b.subject === 'Reading & Writing' || b.subject === 'English';
-          return true;
-        });
-        setEbooks(filtered);
+        const data = await getEbooks(appUser?.uid, appUser?.role, appUser?.subject);
+        setEbooks(data);
       } catch (e) { console.error(e); }
       setLoading(false);
     };
-    if (appUser) loadData();
+    if (appUser?.uid) loadData();
   }, [appUser]);
 
   const filteredBooks = ebooks.filter(book => {
@@ -131,19 +108,18 @@ export default function EbooksPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
           {filteredBooks.map((book) => {
-            const sc = subjectColor(book.subject);
+            const sc = subjectColor(book.subject || '');
             return (
               <div key={book.id} className="stat-card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 {/* Cover */}
                 <div style={{
-                  background: coverGradient(book.subject),
+                  background: coverGradient(book.subject || ''),
                   height: '180px',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                   padding: '1.5rem', position: 'relative', textAlign: 'center'
                 }}>
-                  <div style={{ fontSize: '3rem', marginBottom: '0.5rem', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.3))' }}>{book.emoji || '📘'}</div>
-                  <div style={{ color: '#fff', fontWeight: '800', fontSize: '1.1rem', lineHeight: '1.3', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
-                    {book.title}
+                  <div style={{ width: '48px', height: '48px', borderRadius: '1rem', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+                    {book.coverEmoji || '📚'}
                   </div>
                   {/* Decorative faint icon */}
                   <BookOpen size={100} color="rgba(255,255,255,0.05)" style={{ position: 'absolute', bottom: '-20px', right: '-20px', transform: 'rotate(-15deg)' }} />
@@ -153,7 +129,7 @@ export default function EbooksPage() {
                 <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                     <span style={{ fontSize: '0.7rem', fontWeight: '800', padding: '0.2rem 0.6rem', borderRadius: '1rem', background: sc.bg, color: sc.color, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{book.subject}</span>
-                    <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '600' }}><FileText size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/>{book.pages} pages</span>
+                    <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '600' }}><FileText size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/>Ebook</span>
                   </div>
                   
                   <p style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600', marginBottom: '0.5rem' }}>By {book.author}</p>
@@ -161,20 +137,19 @@ export default function EbooksPage() {
                   
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto' }}>
                     <a 
-                      href={book.downloadUrl}
+                      href={book.pdfUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ flex: 1, padding: '0.625rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: '#fff', color: '#475569', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem', textDecoration: 'none', transition: 'all 0.2s' }}
                     >
                       <Eye size={14} /> View
                     </a>
-                    <a 
-                      href={book.downloadUrl}
-                      download
-                      style={{ flex: 1, padding: '0.625rem', background: '#0f172a', border: 'none', borderRadius: '0.5rem', color: '#fff', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem', textDecoration: 'none', transition: 'all 0.2s' }}
-                    >
-                      <Download size={14} /> Download
-                    </a>
+                    <a href={book.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flex: 1, padding: '0.75rem', background: '#0f172a', color: '#fff', borderRadius: '0.75rem', fontWeight: '700', fontSize: '0.9rem', textDecoration: 'none', transition: 'background 0.2s' }}
+                     onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#1e293b'}
+                     onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = '#0f172a'}>
+                    <Download size={18} />
+                    Download
+                  </a>
                   </div>
                 </div>
               </div>

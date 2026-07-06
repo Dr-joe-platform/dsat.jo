@@ -44,6 +44,7 @@ export default function AdminDashboardPage() {
   const [editTeacherSub, setEditTeacherSub] = useState('');
   const [editAllowed, setEditAllowed] = useState<string[]>([]);
   const [editPlanId, setEditPlanId] = useState('');
+  const [editTeacherCodes, setEditTeacherCodes] = useState('');
   const [isResetting, setIsResetting] = useState(false);
 
   const [actionLoading, setActionLoading] = useState(false);
@@ -340,7 +341,7 @@ export default function AdminDashboardPage() {
                       </td>
                       <td style={{ padding: '0.75rem 0.875rem' }}>
                         <span style={{ fontSize: '0.7rem', fontWeight: '700', color: '#475569', letterSpacing: '0.05em', background: '#f1f5f9', padding: '0.2rem 0.4rem', borderRadius: '0.25rem' }}>
-                          {(user as any).referredBy || user.teacherCode || '—'}
+                          {user.teacherCodes?.join(', ') || (user as any).referredBy || user.teacherCode || '—'}
                         </span>
                       </td>
                       <td style={{ padding: '0.75rem 0.875rem' }}>
@@ -353,6 +354,7 @@ export default function AdminDashboardPage() {
                             setEditTeacherSub(user.teacherSubject || '');
                             setEditAllowed(user.allowedTests || []);
                             setEditPlanId(user.planId || '');
+                            setEditTeacherCodes(user.teacherCodes?.join(', ') || (user as any).referredBy || user.teacherCode || '');
                             setEditUser(user);
                           }} style={{ color: '#3b82f6', fontWeight: '600', fontSize: '0.75rem', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                             <Edit size={12} /> Edit
@@ -432,6 +434,14 @@ export default function AdminDashboardPage() {
 
               {editRole === 'student' && (
                 <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#475569', marginBottom: '0.375rem' }}>Teacher Codes</label>
+                  <input value={editTeacherCodes} onChange={e => setEditTeacherCodes(e.target.value)} className="input-field" placeholder="e.g. TCH-MATH, TCH-ENG" />
+                  <p style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: '0.25rem' }}>Comma separated codes to link this student to multiple teachers.</p>
+                </div>
+              )}
+
+              {editRole === 'student' && (
+                <div>
                   <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#475569', marginBottom: '0.375rem' }}>Allowed Tests Access</label>
                   <div style={{ border: '1px solid #e2e8f0', borderRadius: '0.5rem', maxHeight: '150px', overflowY: 'auto', padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     {tests.length === 0 ? <p style={{ fontSize: '0.75rem', color: '#94a3b8', padding: '0.5rem' }}>No tests found.</p> : tests.map(t => (
@@ -476,14 +486,19 @@ export default function AdminDashboardPage() {
               </button>
               <button
                 onClick={async () => {
-                  await updateUser(editUser.uid, { 
+                  const payload: any = {
                     displayName: editName,
                     role: editRole as AppUser['role'], 
                     status: editStatus as AppUser['status'],
-                    teacherSubject: editTeacherSub as any,
                     allowedTests: editAllowed,
-                    planId: editPlanId || undefined,
-                  });
+                  };
+                  if (editRole === 'teacher') payload.teacherSubject = editTeacherSub || null;
+                  if (editRole === 'student') {
+                    payload.planId = editPlanId || null;
+                    payload.teacherCodes = editTeacherCodes.split(',').map(c => c.trim()).filter(Boolean);
+                  }
+
+                  await updateUser(editUser.uid, payload);
                   await addActivityLog({ type: 'admin', action: 'User Edited', user: appUser?.email || 'Admin', details: `Edited ${editUser.email}`, severity: 'warn' });
                   setEditUser(null);
                   loadData();

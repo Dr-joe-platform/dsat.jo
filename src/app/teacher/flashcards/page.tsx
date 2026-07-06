@@ -4,6 +4,7 @@ import { getFlashcardSets, createFlashcardSet, deleteFlashcardSet, FlashcardSet,
 import { useAuth } from '@/lib/auth-context';
 import { Layers, Plus, Search, Trash2, Edit2, Play, Save, Upload } from 'lucide-react';
 import Papa from 'papaparse';
+import ImageUploader from '@/components/ImageUploader';
 
 export default function FlashcardsManagerPage() {
   const { appUser } = useAuth();
@@ -117,12 +118,16 @@ export default function FlashcardsManagerPage() {
           <Upload size={16} /> Import CSV
           <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCSVImport} />
         </label>
-        <button onClick={() => downloadFlashcardTemplate('Math')} style={{ padding: '0.625rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '0.625rem', fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer' }}>
-          📐 Math Template
-        </button>
-        <button onClick={() => downloadFlashcardTemplate('English')} style={{ padding: '0.625rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '0.625rem', fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer' }}>
-          📖 English Template
-        </button>
+        {(!appUser?.teacherSubject || appUser.teacherSubject === 'Both' || appUser.teacherSubject === 'Math') && (
+          <button onClick={() => downloadFlashcardTemplate('Math')} style={{ padding: '0.625rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '0.625rem', fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer' }}>
+            📐 Math Template
+          </button>
+        )}
+        {(!appUser?.teacherSubject || appUser.teacherSubject === 'Both' || appUser.teacherSubject === 'English') && (
+          <button onClick={() => downloadFlashcardTemplate('English')} style={{ padding: '0.625rem 1rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '0.625rem', fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer' }}>
+            📖 English Template
+          </button>
+        )}
       </div>
 
       {isCreating && (
@@ -134,14 +139,41 @@ export default function FlashcardsManagerPage() {
             style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1', marginBottom: '1rem' }}
           />
           
-          {newCards.map((card, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-              <input type="text" placeholder="Front (Term)" value={card.front} onChange={e => { const nc = [...newCards]; nc[i].front = e.target.value; setNewCards(nc); }} style={{ padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.25rem' }} />
-              <input type="text" placeholder="Back (Definition)" value={card.back} onChange={e => { const nc = [...newCards]; nc[i].back = e.target.value; setNewCards(nc); }} style={{ padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.25rem' }} />
-              <input type="text" placeholder="Example (optional)" value={card.example || ''} onChange={e => { const nc = [...newCards]; nc[i].example = e.target.value; setNewCards(nc); }} style={{ padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '0.25rem' }} />
-              <button onClick={() => { const nc = [...newCards]; nc.splice(i, 1); setNewCards(nc); }} style={{ padding: '0.5rem', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '0.25rem', cursor: 'pointer' }}><Trash2 size={16} /></button>
-            </div>
-          ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {newCards.map((card, i) => (
+              <div key={i} style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.75rem', border: '1px solid #e2e8f0', position: 'relative' }}>
+                <button onClick={() => { const nc = [...newCards]; nc.splice(i, 1); setNewCards(nc); }} style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', padding: '0.25rem', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '0.25rem', cursor: 'pointer' }}><Trash2 size={16} /></button>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '0.75rem', marginTop: '1rem' }}>
+                  <div>
+                    <textarea placeholder="Front (Term)" value={card.front} onChange={e => { const nc = [...newCards]; nc[i].front = e.target.value; setNewCards(nc); }} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '0.5rem', minHeight: '80px', resize: 'vertical', marginBottom: '0.5rem' }} />
+                    <ImageUploader 
+                      onUpload={(url) => {
+                        const nc = [...newCards];
+                        nc[i].front = nc[i].front + `\n\n![Image](${url})`;
+                        setNewCards(nc);
+                      }}
+                      buttonText="Image"
+                      style={{ background: '#fff' }}
+                    />
+                  </div>
+                  <div>
+                    <textarea placeholder="Back (Definition)" value={card.back} onChange={e => { const nc = [...newCards]; nc[i].back = e.target.value; setNewCards(nc); }} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '0.5rem', minHeight: '80px', resize: 'vertical', marginBottom: '0.5rem' }} />
+                    <ImageUploader 
+                      onUpload={(url) => {
+                        const nc = [...newCards];
+                        nc[i].back = nc[i].back + `\n\n![Image](${url})`;
+                        setNewCards(nc);
+                      }}
+                      buttonText="Image"
+                      style={{ background: '#fff' }}
+                    />
+                  </div>
+                </div>
+                <input type="text" placeholder="Example sentence (optional)" value={card.example || ''} onChange={e => { const nc = [...newCards]; nc[i].example = e.target.value; setNewCards(nc); }} style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '0.5rem' }} />
+              </div>
+            ))}
+          </div>
           
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
             <button onClick={() => setNewCards([...newCards, { front: '', back: '', example: '' }])} style={{ padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: '600' }}>+ Add Card</button>

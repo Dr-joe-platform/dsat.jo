@@ -22,7 +22,6 @@ export default function SystemLogsPage() {
       const { getActivityLogs } = await import('@/lib/db');
       const allLogs = await getActivityLogs();
       const sysLogs = allLogs
-        .filter(l => l.type === 'system' || l.severity === 'error' || l.severity === 'warn')
         .map(l => ({
           id: l.id!,
           timestamp: l.timestamp?.toDate ? l.timestamp.toDate().toISOString() : new Date().toISOString(),

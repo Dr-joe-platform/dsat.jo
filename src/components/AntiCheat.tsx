@@ -42,15 +42,9 @@ export default function AntiCheat() {
     window.addEventListener("contextmenu", handleContextMenu);
     window.addEventListener("copy", handleCopy);
 
-    // Dynamic style to disable text selection and dragging
+    // Dynamic style to disable dragging images
     const style = document.createElement("style");
     style.innerHTML = `
-      body {
-        user-select: none !important;
-        -webkit-user-select: none !important;
-        -moz-user-select: none !important;
-        -ms-user-select: none !important;
-      }
       img {
         pointer-events: none !important;
       }

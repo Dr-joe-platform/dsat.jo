@@ -9,14 +9,16 @@ import {
 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { ALL_TEST_QUESTIONS, DSATQuestion, DSATModule } from '@/lib/questions-data';
+import { getAllAvailableQuestions } from '@/lib/questions-pool';
 import { useAuth } from '@/lib/auth-context';
-import { saveTestResult, addNotification, updateUserStats, getUserStats, completeAssignment, addBookmark, removeBookmark } from '@/lib/db';
+import { saveTestResult, addNotification, updateUserStats, getUserStats, completeAssignment, addBookmark, removeBookmark, getUserResults } from '@/lib/db';
 import 'katex/dist/katex.min.css';
 import Latex from 'react-latex-next';
 import { motion } from 'framer-motion';
 import AnnotatableText, { HighlightAnnotation, LATEX_DELIMITERS } from '@/components/AnnotatableText';
-import { Edit2, Clock, BookOpen } from 'lucide-react';
+import { Edit2, Clock, BookOpen, Sparkles } from 'lucide-react';
 import AIExamCharacter from '@/components/AIExamCharacter';
+import WhiteboardStep from '@/components/WhiteboardStep';
 
 // ──────────────────────────────────────────────
 // Bluebook-accurate module timing (minutes)
@@ -56,19 +58,7 @@ export default function TestPage() {
         const timeParam = params.get('time');
         const titleParam = params.get('title');
         
-        let pool: DSATQuestion[] = [];
-        Object.values(ALL_TEST_QUESTIONS).forEach(test => {
-           if(test.M1) pool.push(...test.M1);
-           if(test.M2H) pool.push(...test.M2H);
-           if(test.M2E) pool.push(...test.M2E);
-        });
-        
-        const seen = new Set();
-        pool = pool.filter(q => {
-          if (seen.has(q.id)) return false;
-          seen.add(q.id);
-          return true;
-        });
+        let pool = await getAllAvailableQuestions(appUser?.uid, appUser?.subject);
 
         if (diffs.length > 0) {
            pool = pool.filter(q => diffs.includes(q.difficulty));
@@ -76,9 +66,46 @@ export default function TestPage() {
 
         const topics = params.get('topic') ? params.get('topic')!.split(',') : [];
         if (topics.length > 0) {
-           pool = pool.filter(q => topics.includes(q.skill || '') || topics.includes(q.domain || ''));
+           pool = pool.filter(q => 
+             topics.includes(q._subject || '') || 
+             topics.includes(q.skill || '') || 
+             topics.includes(q.domain || '')
+           );
         }
         
+        const statusParam = params.get('status');
+        if (statusParam && appUser?.uid) {
+           const statuses = statusParam.split(',');
+           try {
+             const userRes = await getUserResults(appUser.uid);
+             const answeredSet = new Set<string>();
+             const incorrectSet = new Set<string>();
+             
+             userRes.forEach(r => {
+               Object.keys(r.answers || {}).forEach(qId => answeredSet.add(qId));
+               (r.wrongQuestionIds || []).forEach(qId => incorrectSet.add(qId));
+             });
+             
+             const correctSet = new Set<string>();
+             answeredSet.forEach(qId => {
+               if (!incorrectSet.has(qId)) correctSet.add(qId);
+             });
+             
+             pool = pool.filter(q => {
+               const isUnanswered = !answeredSet.has(q.id);
+               const isCorrect = correctSet.has(q.id);
+               const isIncorrect = incorrectSet.has(q.id);
+               
+               if (statuses.includes('Unanswered') && isUnanswered) return true;
+               if (statuses.includes('Correct') && isCorrect) return true;
+               if (statuses.includes('Incorrect') && isIncorrect) return true;
+               return false;
+             });
+           } catch (err) {
+             console.error("Error fetching results for status filter:", err);
+           }
+        }
+
         pool.sort(() => Math.random() - 0.5);
 
         let selected = [];
@@ -115,19 +142,7 @@ export default function TestPage() {
         const subject = params.get('subject') || '';
         const limitParam = params.get('q') || '5';
         
-        let pool: DSATQuestion[] = [];
-        Object.values(ALL_TEST_QUESTIONS).forEach(test => {
-           if(test.M1) pool.push(...test.M1);
-           if(test.M2H) pool.push(...test.M2H);
-           if(test.M2E) pool.push(...test.M2E);
-        });
-        
-        const seen = new Set();
-        pool = pool.filter(q => {
-          if (seen.has(q.id)) return false;
-          seen.add(q.id);
-          return true;
-        });
+        let pool = await getAllAvailableQuestions(appUser?.uid, appUser?.subject);
 
         if (subject && subject !== 'Mixed') {
            const isMath = subject.toLowerCase().includes('math');
@@ -166,8 +181,9 @@ export default function TestPage() {
         setTestData(ALL_TEST_QUESTIONS[testId as keyof typeof ALL_TEST_QUESTIONS]);
       } else {
         try {
-          const { getTestById } = await import('@/lib/db');
+          const { getTestById, getMiniQuizById } = await import('@/lib/db');
           const doc = await getTestById(testId as string);
+          
           if (doc && (doc as any).content) {
             const parsed = JSON.parse((doc as any).content);
             const isFullTest = (doc as any).subject === 'Full';
@@ -176,16 +192,23 @@ export default function TestPage() {
             const mathM1: any[] = [];
             const mathM2h: any[] = [];
             parsed.forEach((q: any) => {
+              let cleanQuestion = q.question || '';
+              cleanQuestion = cleanQuestion.replace(/!\[.*?\]\((.*?)\)/g, '').trim();
+              cleanQuestion = cleanQuestion.replace(/\[.*?\]\((.*?)\)/g, '').trim();
+              cleanQuestion = cleanQuestion.replace(/(https?:\/\/[^\s]+)/g, '').trim();
+
               const formattedQ = {
-                id: q.id,
-                domain: q.domain,
-                skill: q.skill,
-                text: q.question,
-                question: q.question,
+                id: q.id || `custom-${Math.random()}`,
+                domain: q.domain || '',
+                skill: q.skill || '',
+                text: cleanQuestion,
+                passage: q.passage || null,
+                imageUrl: q.imageUrl || q.image || null,
+                question: cleanQuestion,
                 options: q.options && q.options.length > 0 ? q.options : undefined,
-                correctAnswer: q.correctAnswer,
-                explanation: q.explanation,
-                type: q.type || (q.options && q.options.length > 0 ? 'MCQ' : 'SPR')
+                correctAnswer: q.correctAnswer || (q.options ? ['A','B','C','D'][q.answer || 0] : ''),
+                explanation: q.explanation || '',
+                type: (q.type === 'MCQ' || q.type === 'MC') ? 'MC' : (q.options && q.options.length > 0 ? 'MC' : 'SPR')
               };
               
               if (isFullTest) {
@@ -195,9 +218,16 @@ export default function TestPage() {
                 else if (q.module === 'MATH_M2H' || q.module === 'MATH_M2') mathM2h.push(formattedQ);
                 else m1.push(formattedQ); // Fallback
               } else {
-                m1.push(formattedQ);
+                if (String(q.module).includes('1') || String(q.module).toUpperCase().includes('M1')) m1.push(formattedQ);
+                else if (String(q.module).includes('2') || String(q.module).toUpperCase().includes('M2')) m2h.push(formattedQ);
+                else m1.push(formattedQ);
               }
             });
+
+            if (!isFullTest && m2h.length === 0 && m1.length >= 4) {
+               const half = Math.ceil(m1.length / 2);
+               m2h.push(...m1.splice(half));
+            }
 
             const finalTestData: any = {
               id: testId,
@@ -205,21 +235,47 @@ export default function TestPage() {
               subject: isFullTest ? 'Full' : (doc as any).subject,
               M1: m1,
               M2H: m2h,
-              M2E: [],
+              M2E: m2h,
             };
             
             if (isFullTest) {
               finalTestData.MATH_M1 = mathM1;
               finalTestData.MATH_M2H = mathM2h;
-              finalTestData.MATH_M2E = [];
-            } else {
+              finalTestData.MATH_M2E = mathM2h;
+            } else if (m2h.length === 0) {
               finalTestData.customTime = Math.max(10, m1.length * 2);
             }
 
             setTestData(finalTestData);
+          } else {
+            // Check if it's a mini quiz
+            const miniDoc = await getMiniQuizById(testId as string);
+            if (miniDoc && miniDoc.questions) {
+              const m1 = miniDoc.questions.map((q, i) => ({
+                id: `mini-${testId}-${i}`,
+                domain: '',
+                skill: '',
+                text: q.question,
+                question: q.question,
+                options: q.options && q.options.length > 0 && q.options.some(o => o.trim()) ? q.options : undefined,
+                correctAnswer: q.options && q.options.length > 0 && q.options.some(o => o.trim()) ? ['A','B','C','D'][q.answer || 0] : q.answer,
+                explanation: '',
+                type: q.options && q.options.length > 0 && q.options.some(o => o.trim()) ? 'MCQ' : 'SPR'
+              }));
+              
+              setTestData({
+                id: testId,
+                name: miniDoc.title,
+                subject: miniDoc.subject,
+                M1: m1,
+                M2H: [],
+                M2E: [],
+                customTime: Math.max(5, Math.ceil(m1.length * 1.2))
+              });
+            }
           }
         } catch (e) {
-          console.error("Failed to load custom test", e);
+          console.error("Failed to load custom test or mini quiz", e);
         }
       }
       setLoadingTest(false);
@@ -259,6 +315,15 @@ export default function TestPage() {
   const [mathScore, setMathScore] = useState(0);
   const [rwScore, setRwScore] = useState(0);
   const [activeHelpsLeft, setActiveHelpsLeft] = useState(5);
+  const [showWhiteboard, setShowWhiteboard] = useState(false);
+  const [dynamicExplanation, setDynamicExplanation] = useState<string>('');
+  const [loadingExplanation, setLoadingExplanation] = useState<boolean>(false);
+
+  useEffect(() => {
+    setShowWhiteboard(false);
+    setDynamicExplanation('');
+    setLoadingExplanation(false);
+  }, [currentIdx, moduleKey]);
 
   // Fullscreen enforcement
   useEffect(() => {
@@ -408,17 +473,35 @@ export default function TestPage() {
       setCurrentIdx(0);
       setPhase('break'); 
     } else {
-      const isFull = !!testData?.isFull;
-      const allModules = testData?.customTime 
-        ? ['M1'] as const 
+      const isFull = testData?.subject === 'Full';
+      
+      const getScorePct = (mod: string) => {
+        const qs = testData?.[mod] ?? [];
+        if (qs.length === 0) return 0;
+        const correct = qs.filter((q: any, i: number) => {
+          const userAns = q.type === 'SPR' ? sprAnswers[mod]?.[i] : answers[mod]?.[i];
+          return userAns === q.correctAnswer;
+        }).length;
+        return correct / qs.length;
+      };
+
+      const routedToM2H = getScorePct('M1') >= 0.5;
+      const routedToMathM2H = getScorePct('MATH_M1') >= 0.5;
+
+      const rawModules = testData?.customTime 
+        ? ['M1'] 
         : isFull 
-          ? ['M1', answers.M2H || sprAnswers.M2H ? 'M2H' : 'M2E', 'MATH_M1', moduleKey] as const 
-          : ['M1', moduleKey] as const;
+          ? ['M1', routedToM2H ? 'M2H' : 'M2E', 'MATH_M1', routedToMathM2H ? 'MATH_M2H' : 'MATH_M2E'] 
+          : ['M1', routedToM2H ? 'M2H' : 'M2E'];
+
+      const allModules = Array.from(new Set(rawModules.filter(k => Boolean(k) && k !== 'break' && k !== 'results'))) as string[];
 
       let totalCorrect = 0, totalQuestions = 0;
       let mathCorrect = 0, mathQuestions = 0;
       let rwCorrect = 0, rwQuestions = 0;
       const wrongIds: string[] = [];
+      const correctIds: string[] = [];
+      const unansweredIds: string[] = [];
       
       const bookmarkedIds: string[] = [];
       allModules.forEach(mk => {
@@ -441,6 +524,9 @@ export default function TestPage() {
           if (isCorrect) {
             totalCorrect++;
             if (isMathModule) mathCorrect++; else rwCorrect++;
+            correctIds.push(q.id);
+          } else if (!userAns || userAns.toString().trim() === '') {
+            unansweredIds.push(q.id);
           } else {
             wrongIds.push(q.id);
           }
@@ -495,6 +581,8 @@ export default function TestPage() {
               sprMATH_M2E: sprAnswers.MATH_M2E || {}
             } as any,
             wrongQuestionIds: wrongIds,
+            correctQuestionIds: correctIds,
+            unansweredQuestionIds: unansweredIds,
             bookmarkedIds,
             skills: skillsData,
             timeTaken: (currentModuleTime * 60),
@@ -575,26 +663,6 @@ export default function TestPage() {
   const lh = lineMap[fontSize];
   const isReviewMode = phase === 'review';
 
-  // ── MAIN TEST UI ──
-  if (!q) return null;
-
-  const currentAnswer = q.type === 'SPR' ? undefined : answers[moduleKey]?.[currentIdx];
-  const currentSpr = sprAnswers[moduleKey]?.[currentIdx] ?? '';
-  const isMarked = !!marked[moduleKey]?.[currentIdx];
-  const crossedOptions = crossed[moduleKey]?.[currentIdx] ?? [];
-  const isElimMode = !!eliminated[moduleKey]?.[currentIdx];
-  const isFirst = currentIdx === 0;
-  const isLast = currentIdx === questions.length - 1;
-  const hasImage = q.imageUrl && q.imageUrl !== null && q.imageUrl !== '';
-  const optLetters = ['A', 'B', 'C', 'D'];
-
-  const toggleCross = (optLetter: string) => {
-    setCrossed(prev => {
-      const cur = prev[moduleKey]?.[currentIdx] ?? [];
-      const next = cur.includes(optLetter) ? cur.filter(x => x !== optLetter) : [...cur, optLetter];
-      return { ...prev, [moduleKey]: { ...prev[moduleKey], [currentIdx]: next } };
-    });
-  };
 
   if (loadingTest) return null;
   if (!testData) return null;
@@ -682,11 +750,26 @@ export default function TestPage() {
     let answeredCount = 0;
     let flaggedCount = 0;
     
-    const allModules = testData?.customTime 
+    const getScorePct = (mod: string) => {
+      const qs = testData?.[mod] ?? [];
+      if (qs.length === 0) return 0;
+      const correct = qs.filter((q: any, i: number) => {
+        const userAns = q.type === 'SPR' ? sprAnswers[mod]?.[i] : answers[mod]?.[i];
+        return userAns === q.correctAnswer;
+      }).length;
+      return correct / qs.length;
+    };
+
+    const routedToM2H = getScorePct('M1') >= 0.5;
+    const routedToMathM2H = getScorePct('MATH_M1') >= 0.5;
+
+    const rawModules = testData?.customTime 
       ? ['M1']
       : isFull 
-        ? ['M1', answers.M2H || sprAnswers.M2H ? 'M2H' : 'M2E', 'MATH_M1', moduleKey]
-        : ['M1', moduleKey];
+        ? ['M1', routedToM2H ? 'M2H' : 'M2E', 'MATH_M1', routedToMathM2H ? 'MATH_M2H' : 'MATH_M2E']
+        : ['M1', routedToM2H ? 'M2H' : 'M2E'];
+
+    const allModules = Array.from(new Set(rawModules.filter(k => Boolean(k) && k !== 'break' && k !== 'results'))) as string[];
         
     allModules.forEach(mk => {
       const qs = testData[mk as keyof DSATModule] ?? [];
@@ -699,9 +782,10 @@ export default function TestPage() {
         if (isMk) flaggedCount++;
 
         questionList.push({
-          num: qNumber++,
+          num: i + 1,
           module: mk,
           isAnswered: !!userAns,
+          isCorrect: isCorrect,
           isMarked: isMk,
           idx: i
         });
@@ -787,38 +871,58 @@ export default function TestPage() {
               <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Click any question to review your answer</div>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '0.75rem', marginBottom: '3rem' }}>
-              {questionList.map((q, i) => {
-                let bg = '#f1f5f9';
-                let border = '1px solid #cbd5e1';
-                let color = '#334155';
-                
-                if (q.isMarked) {
-                  bg = '#fef08a';
-                  border = '1px solid #fde047';
-                  color = '#854d0e';
-                } else if (q.isAnswered) {
-                  bg = '#bbf7d0';
-                  border = '1px solid #86efac';
-                  color = '#166534';
-                }
+            <div>
+              {allModules.map((mk, modIdx) => {
+                const moduleQuestions = questionList.filter(q => q.module === mk);
+                if (moduleQuestions.length === 0) return null;
                 
                 return (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      setModuleKey(q.module);
-                      setCurrentIdx(q.idx);
-                      setPhase('review');
-                    }}
-                    style={{
-                      aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: bg, border: border, borderRadius: '4px', fontWeight: '600', fontSize: '0.85rem', color: color,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {q.num}
-                  </button>
+                  <div key={mk} style={{ marginBottom: '2.5rem' }}>
+                    <h4 style={{ fontSize: '1.05rem', fontWeight: '700', color: '#334155', marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
+                      Section {modIdx + 1} {mk.includes('MATH') ? '(Math)' : isRW ? '(Reading & Writing)' : ''}
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '0.75rem' }}>
+                      {moduleQuestions.map((q, i) => {
+                        let bg = '#f1f5f9';
+                        let border = '1px solid #cbd5e1';
+                        let color = '#334155';
+                        
+                        if (q.isAnswered) {
+                          if (q.isCorrect) {
+                            bg = '#bbf7d0';
+                            border = '1px solid #86efac';
+                            color = '#166534';
+                          } else {
+                            bg = '#fecaca';
+                            border = '1px solid #fca5a5';
+                            color = '#991b1b';
+                          }
+                        }
+                        
+                        if (q.isMarked) {
+                          border = '2px dashed #eab308';
+                        }
+                        
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              setModuleKey(q.module);
+                              setCurrentIdx(q.idx);
+                              setPhase('review');
+                            }}
+                            style={{
+                              aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              background: bg, border: border, borderRadius: '4px', fontWeight: '600', fontSize: '0.85rem', color: color,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {q.num}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -850,6 +954,51 @@ export default function TestPage() {
     );
   }
 
+  const fetchExplanation = async () => {
+    if (!q) return;
+    setLoadingExplanation(true);
+    try {
+      const res = await fetch('/api/ai-explain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionText: q.text,
+          passage: q.passage,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+        })
+      });
+      const data = await res.json();
+      if (data.explanation) {
+        setDynamicExplanation(data.explanation);
+        setShowWhiteboard(true);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setLoadingExplanation(false);
+  };
+
+  // ── MAIN TEST UI ──
+  if (!q) return null;
+
+  const currentAnswer = q.type === 'SPR' ? undefined : answers[moduleKey]?.[currentIdx];
+  const currentSpr = sprAnswers[moduleKey]?.[currentIdx] ?? '';
+  const isMarked = !!marked[moduleKey]?.[currentIdx];
+  const crossedOptions = crossed[moduleKey]?.[currentIdx] ?? [];
+  const isElimMode = !!eliminated[moduleKey]?.[currentIdx];
+  const isFirst = currentIdx === 0;
+  const isLast = currentIdx === questions.length - 1;
+  const hasImage = q.imageUrl && q.imageUrl !== null && q.imageUrl !== '';
+  const optLetters = ['A', 'B', 'C', 'D'];
+
+  const toggleCross = (optLetter: string) => {
+    setCrossed(prev => {
+      const cur = prev[moduleKey]?.[currentIdx] ?? [];
+      const next = cur.includes(optLetter) ? cur.filter(x => x !== optLetter) : [...cur, optLetter];
+      return { ...prev, [moduleKey]: { ...prev[moduleKey], [currentIdx]: next } };
+    });
+  };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f8f9fa', fontFamily: '"Georgia", "Times New Roman", serif', overflow: 'hidden' }}>
 
@@ -979,7 +1128,7 @@ export default function TestPage() {
           </div>
         )}
 
-        <div style={{ flex: q.passage ? 1 : 'none', width: q.passage ? 'auto' : '100%', maxWidth: q.passage ? 'none' : '800px', overflowY: 'auto', padding: '0', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
+        <div style={{ flex: 1, width: q.passage ? 'auto' : '100%', maxWidth: q.passage ? 'none' : '800px', overflowY: 'auto', padding: '0', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
           
           <div style={{ background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0', borderBottom: '1px solid #cbd5e1', fontFamily: 'sans-serif' }}>
             <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -1007,13 +1156,6 @@ export default function TestPage() {
           <div style={{ padding: '2rem 3rem', display: 'flex', flexDirection: 'column', alignItems: q.passage ? 'flex-start' : 'center' }}>
             <div style={{ width: '100%', maxWidth: '800px' }}>
               <div style={{ fontSize: fsz, lineHeight: lh, color: '#1e293b', marginBottom: '2rem' }}>
-                {hasImage && (
-                  <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
-                    <div style={{ color: '#94a3b8', fontSize: '0.8rem', fontFamily: 'sans-serif', textAlign: 'center', padding: '2rem', border: '2px dashed #e2e8f0', borderRadius: '0.375rem', width: '100%' }}>
-                      📊 [Figure/Graph would display here]
-                    </div>
-                  </div>
-                )}
                 <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'Georgia, serif' }}>
                   <AnnotatableText
                      text={q.text}
@@ -1029,6 +1171,11 @@ export default function TestPage() {
                      }))}
                   />
                 </div>
+                {hasImage && (
+                  <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+                    <img src={q.imageUrl || undefined} alt="Question figure" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+                  </div>
+                )}
               </div>
 
             {q.options && (
@@ -1122,17 +1269,53 @@ export default function TestPage() {
             </div>
           )}
           
-          {isReviewMode && q.explanation && (
-            <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f8fafc', borderLeft: '4px solid #3b82f6', borderRadius: '0.5rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', marginBottom: '1rem', fontFamily: 'sans-serif' }}>Explanation</h3>
-              {q.type === 'SPR' && (
-                <div style={{ marginBottom: '1rem', color: '#10b981', fontWeight: '700', fontFamily: 'sans-serif' }}>Correct Answer: {q.correctAnswer}</div>
-              )}
-              <div style={{ fontSize: '1rem', lineHeight: '1.6', color: '#334155', fontFamily: 'sans-serif' }}>
-                <Latex delimiters={LATEX_DELIMITERS} strict={false}>{q.explanation}</Latex>
+          {isReviewMode && (
+              <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f8fafc', borderLeft: '4px solid #3b82f6', borderRadius: '0.5rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', marginBottom: '1rem', fontFamily: 'sans-serif' }}>Explanation</h3>
+                {q.type === 'SPR' && (
+                  <div style={{ marginBottom: '1rem', color: '#10b981', fontWeight: '700', fontFamily: 'sans-serif' }}>Correct Answer: {q.correctAnswer}</div>
+                )}
+                
+                {q.explanation ? (
+                  <div style={{ fontSize: '1rem', lineHeight: '1.6', color: '#334155', fontFamily: 'sans-serif' }}>
+                    <Latex delimiters={LATEX_DELIMITERS} strict={false}>{q.explanation}</Latex>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '1rem', lineHeight: '1.6', color: '#64748b', fontFamily: 'sans-serif', fontStyle: 'italic' }}>
+                    No written explanation available.
+                  </div>
+                )}
+                
+                {!showWhiteboard && (
+                  <button 
+                    onClick={() => {
+                      if (q.explanation || dynamicExplanation) {
+                        setShowWhiteboard(true);
+                      } else {
+                        fetchExplanation();
+                      }
+                    }}
+                    disabled={loadingExplanation}
+                    style={{ marginTop: '1.5rem', background: '#4f46e5', color: '#fff', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', cursor: loadingExplanation ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', fontFamily: 'sans-serif', opacity: loadingExplanation ? 0.7 : 1 }}
+                  >
+                    {loadingExplanation ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                    {loadingExplanation ? 'Analyzing question...' : 'Explain with AI Tutor ✨'}
+                  </button>
+                )}
+                
+                {showWhiteboard && (q.explanation || dynamicExplanation) && (
+                  <div style={{ marginTop: '2rem', position: 'relative' }}>
+                    <button 
+                      onClick={() => setShowWhiteboard(false)}
+                      style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10 }}
+                    >
+                      <X size={16} />
+                    </button>
+                    <WhiteboardStep explanationText={q.explanation || dynamicExplanation} />
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            )}
           
           </div>
         </div>
@@ -1164,6 +1347,15 @@ export default function TestPage() {
         </div>
 
         <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1rem' }}>
+          {isReviewMode && (
+            <button
+              onClick={() => setPhase('results')}
+              style={{ padding: '0.5rem 1.5rem', background: 'none', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '2rem', fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer', fontFamily: 'sans-serif', marginRight: 'auto' }}
+            >
+              &larr; Back to Results
+            </button>
+          )}
+
           {isFirst ? (
             <button disabled style={{ padding: '0.5rem 1.5rem', background: 'none', color: '#94a3b8', border: '1px solid transparent', fontWeight: 'bold', fontSize: '1rem', cursor: 'not-allowed', fontFamily: 'sans-serif' }}>Back</button>
           ) : (
@@ -1177,17 +1369,19 @@ export default function TestPage() {
           
           <button
             onClick={() => {
-              if (isReviewMode) {
-                setPhase('results');
-              } else if (isLast) {
-                setShowSubmitConfirm(true);
+              if (isLast) {
+                if (isReviewMode) {
+                  setPhase('results');
+                } else {
+                  setShowSubmitConfirm(true);
+                }
               } else {
                 setCurrentIdx(i => i + 1);
               }
             }}
             style={{ padding: '0.6rem 2rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '2rem', fontWeight: 'bold', cursor: 'pointer', fontFamily: 'sans-serif', fontSize: '1rem', boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)' }}
           >
-            {isReviewMode ? 'Back to Results' : isLast ? 'Next' : 'Next'}
+            {isLast && !isReviewMode ? 'Next' : (isLast && isReviewMode ? 'Return to Results' : 'Next')}
           </button>
         </div>
       </footer>
@@ -1205,29 +1399,62 @@ export default function TestPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', maxWidth: '1000px', margin: '0 auto 1.5rem auto' }}>
               <h3 style={{ fontWeight: '800', color: '#1e293b', fontSize: '1.25rem', margin: 0 }}>Question Navigator</h3>
               <div style={{ display: 'flex', gap: '2rem', fontSize: '0.85rem', color: '#475569', fontWeight: '600' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '16px', height: '16px', background: '#2563eb', borderRadius: '4px' }} /> Answered</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '16px', height: '16px', background: '#fef3c7', border: '2px solid #fbbf24', borderRadius: '4px' }} /> For Review</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '16px', height: '16px', background: '#fff', border: '2px dashed #94a3b8', borderRadius: '4px' }} /> Unanswered</span>
+                {isReviewMode ? (
+                  <>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '16px', height: '16px', background: '#bbf7d0', border: '1px solid #86efac', borderRadius: '4px' }} /> Correct</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '16px', height: '16px', background: '#fecaca', border: '1px solid #fca5a5', borderRadius: '4px' }} /> Incorrect</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '16px', height: '16px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px' }} /> Unanswered</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '16px', height: '16px', background: 'transparent', border: '2px dashed #eab308', borderRadius: '4px' }} /> For Review</span>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '16px', height: '16px', background: '#2563eb', borderRadius: '4px' }} /> Answered</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '16px', height: '16px', background: '#fef3c7', border: '2px solid #fbbf24', borderRadius: '4px' }} /> For Review</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '16px', height: '16px', background: '#fff', border: '2px dashed #94a3b8', borderRadius: '4px' }} /> Unanswered</span>
+                  </>
+                )}
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(14, 1fr)', gap: '0.5rem', maxWidth: '1000px', margin: '0 auto' }}>
               {questions.map((q, i) => {
-                const isAnswered = q.type === 'SPR' ? sprAnswers[moduleKey][i] !== undefined && sprAnswers[moduleKey][i] !== '' : answers[moduleKey][i] !== undefined;
-                const isMk = !!marked[moduleKey][i];
+                const userAns = q.type === 'SPR' ? sprAnswers[moduleKey]?.[i] : answers[moduleKey]?.[i];
+                const isAnswered = userAns !== undefined && userAns !== '';
+                const isMk = !!marked[moduleKey]?.[i];
                 const isCurrent = i === currentIdx;
                 
                 let bg = '#fff';
                 let border = '2px dashed #94a3b8';
                 let color = '#475569';
                 
-                if (isMk) {
-                  bg = '#fef3c7';
-                  border = '2px solid #fbbf24';
-                  color = '#b45309';
-                } else if (isAnswered) {
-                  bg = '#2563eb';
-                  border = '2px solid #2563eb';
-                  color = '#fff';
+                if (isReviewMode) {
+                  bg = '#f1f5f9';
+                  border = '1px solid #cbd5e1';
+                  color = '#334155';
+                  if (isAnswered) {
+                    const isCorrect = userAns === q.correctAnswer;
+                    if (isCorrect) {
+                      bg = '#bbf7d0';
+                      border = '1px solid #86efac';
+                      color = '#166534';
+                    } else {
+                      bg = '#fecaca';
+                      border = '1px solid #fca5a5';
+                      color = '#991b1b';
+                    }
+                  }
+                  if (isMk) {
+                    border = '2px dashed #eab308';
+                  }
+                } else {
+                  if (isMk) {
+                    bg = '#fef3c7';
+                    border = '2px solid #fbbf24';
+                    color = '#b45309';
+                  } else if (isAnswered) {
+                    bg = '#2563eb';
+                    border = '2px solid #2563eb';
+                    color = '#fff';
+                  }
                 }
                 
                 return (
