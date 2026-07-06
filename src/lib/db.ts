@@ -44,6 +44,8 @@ export interface TestResult {
   testName: string;
   module: string;
   totalScore: number;
+  totalMathScore?: number;
+  totalEnglishScore?: number;
   maxScore: number;
   percentage: number;
   correctCount: number;
