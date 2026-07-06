@@ -19,8 +19,8 @@ export function downloadCSVTemplate(subject: 'Math' | 'English' | 'Mixed') {
   
   if (subject === 'English') {
     csvContent = `Type,Passage,Question,Option_A,Option_B,Option_C,Option_D,Correct_Answer,Explanation,Domain,Skill,Difficulty\n` +
-      `MCQ,"This is a sample passage containing multiple sentences. It can have ""quotes"" and commas.","What is the main idea?","Idea A","Idea B","Idea C","Idea D",A,"Because A summarizes it best.",Information and Ideas,Central Ideas and Details,medium\n` +
-      `SPR,"Another passage...","What year is mentioned?",,,,1994,"The text says 1994 explicitly.",Information and Ideas,Command of Evidence,easy\n`;
+      `MCQ,"This is a sample passage. If the next question uses the SAME passage, you can leave the Passage column blank for the next question!","What is the main idea?","Idea A","Idea B","Idea C","Idea D",A,"Because A summarizes it best.",Information and Ideas,Central Ideas and Details,medium\n` +
+      `SPR,,"What year is mentioned?",,,,1994,"The text says 1994 explicitly.",Information and Ideas,Command of Evidence,easy\n`;
   } else {
     csvContent = `Type,Question,Option_A,Option_B,Option_C,Option_D,Correct_Answer,Explanation,Domain,Skill,Difficulty\n` +
       `MCQ,"If $2x + 3 = 7$, what is $x$?","1","2","3","4",B,"Subtract 3 to get $2x = 4$, then divide by 2.",Algebra,Linear equations in one variable,easy\n` +
@@ -45,12 +45,18 @@ export function parseQuestionsCSV(file: File, targetModule?: string): Promise<Pa
       complete: (results) => {
         try {
           const questions: ParsedQuestion[] = [];
+          let lastPassage = '';
           
           results.data.forEach((row: any, index: number) => {
             const type = (row['Type'] || 'MCQ').toString().toUpperCase().trim();
             const qType: 'MCQ' | 'SPR' = type === 'SPR' ? 'SPR' : 'MCQ';
             
-            const passage = row['Passage'] ? row['Passage'].toString().trim() : '';
+            const rawPassage = row['Passage'] ? row['Passage'].toString().trim() : '';
+            if (rawPassage) {
+              lastPassage = rawPassage;
+            }
+            const passage = lastPassage;
+
             const question = row['Question'] ? row['Question'].toString().trim() : '';
             
             if (!question) return; // Skip if no question text

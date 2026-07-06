@@ -622,6 +622,7 @@ export default function TestPage() {
   };
 
   const q = questions[currentIdx];
+  const annKey = q.passage ? 'pass_' + q.passage.length + '_' + q.passage.slice(0, 20).replace(/\s/g, '') : q.id;
 
   const setAnswer = (optLetter: string) => {
     setAnswers(prev => ({ ...prev, [moduleKey]: { ...prev[moduleKey], [currentIdx]: optLetter } }));
@@ -1115,14 +1116,14 @@ export default function TestPage() {
              <AnnotatableText
                text={q.passage}
                disableLatex={!isMath}
-               annotations={annotations[q.id] || []}
+               annotations={annotations[annKey] || []}
                onAddAnnotation={(ann) => setAnnotations(prev => ({
                  ...prev,
-                 [q.id]: [...(prev[q.id] || []), { ...ann, id: Date.now().toString() }]
+                 [annKey]: [...(prev[annKey] || []), { ...ann, id: Date.now().toString() }]
                }))}
                onRemoveAnnotation={(id) => setAnnotations(prev => ({
                  ...prev,
-                 [q.id]: (prev[q.id] || []).filter(a => a.id !== id)
+                 [annKey]: (prev[annKey] || []).filter(a => a.id !== id)
                }))}
              />
           </div>
