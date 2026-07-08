@@ -13,6 +13,15 @@ export const metadata: Metadata = {
     description: 'DSAT.JO - Our comprehensive platform for Digital SAT success.',
     siteName: 'DSAT.JO',
   },
+  manifest: '/manifest.json',
+  icons: {
+    apple: '/icon-192x192.png',
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'DSAT.JO',
+    statusBarStyle: 'default',
+  },
 };
 
 export default function RootLayout({
