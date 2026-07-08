@@ -31,6 +31,16 @@ export default function TestBankPage() {
   // Add Test Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTest, setNewTest] = useState({ name: '', subject: 'Math', questions: 44, source: 'Manual Entry' });
+  const [modulesConfig, setModulesConfig] = useState({
+    M1: { questions: 27, time: 32, name: 'Reading and Writing Module 1' },
+    M2: { questions: 27, time: 32, name: 'Reading and Writing Module 2' }
+  });
+  const handleConfigChange = (mod: string, field: 'questions' | 'time' | 'name', value: number | string) => {
+    setModulesConfig(prev => ({
+      ...prev,
+      [mod]: { ...prev[mod as keyof typeof prev], [field]: value }
+    }));
+  };
   const [isAdding, setIsAdding] = useState(false);
   const [fileType, setFileType] = useState<'pdf' | 'csv'>('csv');
   const [file, setFile] = useState<File | null>(null);
@@ -117,6 +127,7 @@ export default function TestBankPage() {
         source: newTest.source,
         isPublic: false,
         content: JSON.stringify(finalQuestions),
+        modulesConfig: newTest.subject === 'English' ? modulesConfig : undefined
       };
       await createTestBank(testData);
       await addActivityLog({ type: 'admin', action: 'Test Created', user: appUser?.email || 'Admin', details: `Created test: ${newTest.name}`, severity: 'info' });
@@ -200,6 +211,24 @@ export default function TestBankPage() {
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginBottom: '0.25rem' }}>Source / Notes</label>
                 <input type="text" value={newTest.source} onChange={e => setNewTest({ ...newTest, source: e.target.value })} className="input-field" placeholder="e.g. Official CB 2024" />
               </div>
+
+              {newTest.subject === 'English' && (
+                <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }}>
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: '700', marginBottom: '0.75rem' }}>English Sections Configuration</h4>
+                  {['M1', 'M2'].map((mod) => (
+                    <div key={mod} style={{ marginBottom: '1rem' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: '600', marginBottom: '0.5rem' }}>{mod === 'M1' ? 'Module 1' : 'Module 2'}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <input type="text" value={(modulesConfig as any)[mod].name} onChange={e => handleConfigChange(mod, 'name', e.target.value)} className="input-field" placeholder="Section Name" />
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <input type="number" value={(modulesConfig as any)[mod].questions} onChange={e => handleConfigChange(mod, 'questions', parseInt(e.target.value) || 27)} className="input-field" placeholder="Questions" />
+                          <input type="number" value={(modulesConfig as any)[mod].time} onChange={e => handleConfigChange(mod, 'time', parseInt(e.target.value) || 32)} className="input-field" placeholder="Time (mins)" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.5rem' }}>Upload Questions (Optional)</label>
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
