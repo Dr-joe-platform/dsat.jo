@@ -331,8 +331,12 @@ export default function WrongAnswersPage() {
                             display: 'flex', alignItems: 'center', gap: '0.625rem',
                           }}>
                             <span style={{ fontWeight: '700', fontSize: '0.78rem', color: letterColor, flexShrink: 0 }}>{letter}.</span>
-                            <span style={{ fontSize: '0.82rem', color: textColor }}>
-                              <Latex delimiters={LATEX_DELIMITERS} strict={false}>{opt}</Latex>
+                            <span style={{ fontSize: '0.82rem', color: textColor, display: 'flex', alignItems: 'center' }}>
+                              {(opt.trim().startsWith('http') && !opt.trim().includes(' ')) ? (
+                                <img src={opt.trim()} alt="Option image" style={{ maxWidth: '100%', maxHeight: '120px', borderRadius: '4px', objectFit: 'contain' }} />
+                              ) : (
+                                <Latex delimiters={LATEX_DELIMITERS} strict={false}>{opt}</Latex>
+                              )}
                             </span>
                             {isCorrect && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: '#16a34a', fontWeight: '700' }}>✓ Correct</span>}
                             {isStudentAnswer && !isCorrect && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: '#dc2626', fontWeight: '700' }}>✗ Your Answer</span>}

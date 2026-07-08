@@ -1182,9 +1182,15 @@ export default function TestPage() {
       {/* ── QUESTION AREA ── */}
       <main style={{ flex: 1, display: 'flex', flexDirection: q.passage ? 'row' : 'column', alignItems: q.passage ? 'stretch' : 'center', overflow: 'hidden', background: '#fff' }}>
         {q.passage && (
-          <div style={{ flex: 1, padding: '2rem 3rem', borderRight: '2px solid #e2e8f0', overflowY: 'auto', fontSize: fsz, lineHeight: lh, fontFamily: 'Georgia, serif', color: '#1e293b' }}>
-             <AnnotatableText
-               text={q.passage}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: '2px solid #e2e8f0', overflowY: 'auto', fontSize: fsz, lineHeight: lh, fontFamily: 'Georgia, serif', color: '#1e293b', position: 'relative' }}>
+             {q.passageName && (
+               <div style={{ position: 'sticky', top: 0, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(4px)', zIndex: 10, padding: '1.5rem 3rem 1rem', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '1.1em', marginBottom: '1rem' }}>
+                 <Latex delimiters={LATEX_DELIMITERS} strict={false}>{q.passageName}</Latex>
+               </div>
+             )}
+             <div style={{ padding: q.passageName ? '0 3rem 2rem' : '2rem 3rem' }}>
+               <AnnotatableText
+                 text={q.passage}
                passageStartLine={q.passageStartLine}
                disableLatex={!isMath}
                annotations={annotations[annKey] || []}
@@ -1197,6 +1203,7 @@ export default function TestPage() {
                  [annKey]: (prev[annKey] || []).filter(a => a.id !== id)
                }))}
              />
+             </div>
           </div>
         )}
 
@@ -1295,7 +1302,9 @@ export default function TestPage() {
                         {letter}
                       </div>
                       <div style={{ flex: 1, fontSize: fsz, lineHeight: lh, position: 'relative', fontFamily: 'Georgia, serif' }}>
-                        {opt.includes('<table') ? (
+                        {(opt.trim().startsWith('http') && !opt.trim().includes(' ')) ? (
+                          <img src={opt.trim()} alt="Option image" style={{ maxWidth: '100%', maxHeight: '200px', display: 'block', borderRadius: '4px', objectFit: 'contain' }} />
+                        ) : opt.includes('<table') ? (
                           <div dangerouslySetInnerHTML={{ __html: opt.replace(/\$([^$]+)\$/g, (m, math) => {
                             try {
                               const katex = require('katex');

@@ -1121,6 +1121,7 @@ export interface QuizQuestion {
   answer: number;
   imageUrl?: string;
   passageStartLine?: number;
+  passageName?: string;
 }
 export interface MiniQuiz {
   teacherName?: string;

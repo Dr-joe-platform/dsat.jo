@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth-context';
 import { getUserResults, TestResult } from '../db';
-import { filterResultsBySubject } from '../subject-filter';
+import { filterResultsBySubject, normalizeSubject } from '../subject-filter';
 
 export interface ComputedStats {
   results: TestResult[];
@@ -36,16 +36,20 @@ export function useResults(): ComputedStats {
   const latestScore = results[0]?.totalScore ?? null;
   const bestScore = results.length > 0 ? Math.max(...results.map(r => r.totalScore)) : null;
   
-  const mathResults = results.filter(r => r.subject === 'math');
-  const bestMathScore = mathResults.length > 0 ? Math.max(...mathResults.map(r => r.totalScore)) : null;
+  const mathResults = results.filter(r => normalizeSubject(r.subject) === 'math' || normalizeSubject(r.subject) === 'both');
+  const bestMathScore = mathResults.length > 0 
+    ? Math.max(...mathResults.map(r => normalizeSubject(r.subject) === 'both' && r.totalMathScore !== undefined ? r.totalMathScore : r.totalScore)) 
+    : null;
 
-  const rwResults = results.filter(r => r.subject === 'reading_writing');
-  const bestRWScore = rwResults.length > 0 ? Math.max(...rwResults.map(r => r.totalScore)) : null;
+  const rwResults = results.filter(r => normalizeSubject(r.subject) === 'english' || normalizeSubject(r.subject) === 'both');
+  const bestRWScore = rwResults.length > 0 
+    ? Math.max(...rwResults.map(r => normalizeSubject(r.subject) === 'both' && r.totalEnglishScore !== undefined ? r.totalEnglishScore : r.totalScore)) 
+    : null;
 
   const rawAvg = results.length > 0 ? results.reduce((s, r) => s + r.totalScore, 0) / results.length : null;
   const avgScore = rawAvg !== null ? Math.round(rawAvg / 10) * 10 : null;
-  const latestRW = rwResults[0]?.totalScore ?? null;
-  const latestMath = mathResults[0]?.totalScore ?? null;
+  const latestRW = rwResults[0] ? (normalizeSubject(rwResults[0].subject) === 'both' && rwResults[0].totalEnglishScore !== undefined ? rwResults[0].totalEnglishScore : rwResults[0].totalScore) : null;
+  const latestMath = mathResults[0] ? (normalizeSubject(mathResults[0].subject) === 'both' && mathResults[0].totalMathScore !== undefined ? mathResults[0].totalMathScore : mathResults[0].totalScore) : null;
   const improvement = results.length >= 2 ? (results[0].totalScore - results[1].totalScore) : null;
 
   return { results, loading, latestScore, bestScore, bestMathScore, bestRWScore, avgScore, totalTests, latestRW, latestMath, improvement };

@@ -8,6 +8,7 @@ export interface DSATQuestion {
   module: number;
   text: string;
   passage?: string;
+  passageName?: string;
   passageStartLine?: number;
   type: 'MC' | 'SPR';
   options?: string[];

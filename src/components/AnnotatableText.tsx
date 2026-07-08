@@ -77,6 +77,9 @@ export default function AnnotatableText({ text, annotations, onAddAnnotation, on
 
     const traverse = (node: Node) => {
       if (found) return;
+      if (node.nodeType === Node.ELEMENT_NODE && (node as Element).hasAttribute('data-ignore-selection')) {
+        return;
+      }
       if (node === targetNode) {
         index += targetOffset;
         found = true;
@@ -151,7 +154,7 @@ export default function AnnotatableText({ text, annotations, onAddAnnotation, on
       return renderWithImages(text);
     }
 
-    let segments: { text: string; annotation?: HighlightAnnotation }[] = [];
+    let segments: { text: string; annotation?: HighlightAnnotation; start: number; end: number }[] = [];
     
     // Sort annotations by startIndex
     const sorted = [...annotations].sort((a, b) => a.startIndex - b.startIndex);
@@ -159,40 +162,86 @@ export default function AnnotatableText({ text, annotations, onAddAnnotation, on
 
     sorted.forEach(ann => {
       if (ann.startIndex > currentIndex) {
-        segments.push({ text: text.substring(currentIndex, ann.startIndex) });
+        segments.push({ text: text.substring(currentIndex, ann.startIndex), start: currentIndex, end: ann.startIndex });
       }
+      const annStart = Math.max(currentIndex, ann.startIndex);
       segments.push({
-        text: text.substring(Math.max(currentIndex, ann.startIndex), ann.endIndex),
-        annotation: ann
+        text: text.substring(annStart, ann.endIndex),
+        annotation: ann,
+        start: annStart,
+        end: ann.endIndex
       });
       currentIndex = Math.max(currentIndex, ann.endIndex);
     });
 
     if (currentIndex < text.length) {
-      segments.push({ text: text.substring(currentIndex) });
+      segments.push({ text: text.substring(currentIndex), start: currentIndex, end: text.length });
     }
 
-    return segments.map((seg, i) => {
-      if (seg.annotation) {
-        return (
-          <mark 
-            key={i} 
-            style={{ 
-              backgroundColor: seg.annotation.color, 
-              cursor: 'pointer',
-              color: 'inherit',
-              padding: '2px 0',
-              borderRadius: '2px'
-            }}
-            onClick={() => onRemoveAnnotation(seg.annotation!.id)}
-            title="Click to remove highlight"
-          >
-            {renderWithImages(seg.text)}
-          </mark>
-        );
+      if (passageStartLine === undefined) {
+        return segments.map((seg, i) => {
+          if (seg.annotation) {
+            return (
+              <mark 
+                key={i} 
+                style={{ backgroundColor: seg.annotation.color, cursor: 'pointer', color: 'inherit', padding: '2px 0', borderRadius: '2px' }}
+                onClick={() => onRemoveAnnotation(seg.annotation!.id)}
+                title="Click to remove highlight"
+              >
+                {renderWithImages(seg.text)}
+              </mark>
+            );
+          }
+          return <span key={i}>{renderWithImages(seg.text)}</span>;
+        });
       }
-      return <span key={i}>{renderWithImages(seg.text)}</span>;
-    });
+
+      const lines = text.split('\n');
+      let charOffset = 0;
+      
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {lines.map((lineText, lineIdx) => {
+            const lineStart = charOffset;
+            const lineEnd = charOffset + lineText.length;
+            charOffset += lineText.length + 1; // +1 for \n
+            
+            const lineNum = passageStartLine + lineIdx;
+            const showNum = (lineNum % 5 === 0);
+
+            const overlappingSegments = segments.filter(seg => seg.start < lineEnd && seg.end > lineStart);
+            
+            return (
+              <div key={lineIdx} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                <div data-ignore-selection="true" style={{ width: '25px', textAlign: 'right', flexShrink: 0, color: '#94a3b8', fontSize: '0.8rem', userSelect: 'none', fontFamily: 'monospace', paddingTop: '2px' }}>
+                  {showNum ? lineNum : ''}
+                </div>
+                <div style={{ flex: 1, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {overlappingSegments.map((seg, i) => {
+                    const overlapStart = Math.max(seg.start, lineStart);
+                    const overlapEnd = Math.min(seg.end, lineEnd);
+                    const overlapText = text.substring(overlapStart, overlapEnd);
+                    if (seg.annotation) {
+                      return (
+                        <mark 
+                          key={i} 
+                          style={{ backgroundColor: seg.annotation.color, cursor: 'pointer', color: 'inherit', padding: '2px 0', borderRadius: '2px' }}
+                          onClick={() => onRemoveAnnotation(seg.annotation!.id)}
+                          title="Click to remove highlight"
+                        >
+                          {renderWithImages(overlapText)}
+                        </mark>
+                      );
+                    }
+                    return <span key={i}>{renderWithImages(overlapText)}</span>;
+                  })}
+                  {lineIdx < lines.length - 1 && '\n'}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
   };
 
   return (
