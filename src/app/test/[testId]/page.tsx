@@ -13,6 +13,7 @@ import { ALL_TEST_QUESTIONS, DSATQuestion, DSATModule } from '@/lib/questions-da
 import { getAllAvailableQuestions } from '@/lib/questions-pool';
 import { useAuth } from '@/lib/auth-context';
 import { saveTestResult, addNotification, updateUserStats, getUserStats, completeAssignment, addBookmark, removeBookmark, getUserResults } from '@/lib/db';
+import { explainQuestionAction } from '@/app/actions/ai-tutor';
 import 'katex/dist/katex.min.css';
 import Latex from 'react-latex-next';
 import { motion } from 'framer-motion';
@@ -291,6 +292,42 @@ export default function TestPage() {
     };
     fetchTest();
   }, [testId]);
+  useEffect(() => {
+    const initReview = async () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('review') === 'true' && appUser?.uid && testData) {
+        try {
+          const results = await getUserResults(appUser.uid);
+          const currentResult = results.sort((a, b) => b.completedAt?.toMillis() - a.completedAt?.toMillis()).find(r => r.testId === testId);
+          if (currentResult && currentResult.answers) {
+             setAnswers({
+               M1: currentResult.answers.M1 || {},
+               M2H: currentResult.answers.M2H || {},
+               M2E: currentResult.answers.M2E || {},
+               MATH_M1: currentResult.answers.MATH_M1 || {},
+               MATH_M2H: currentResult.answers.MATH_M2H || {},
+               MATH_M2E: currentResult.answers.MATH_M2E || {}
+             });
+             setSprAnswers({
+               M1: (currentResult.answers as any).sprM1 || {},
+               M2H: (currentResult.answers as any).sprM2H || {},
+               M2E: (currentResult.answers as any).sprM2E || {},
+               MATH_M1: (currentResult.answers as any).sprMATH_M1 || {},
+               MATH_M2H: (currentResult.answers as any).sprMATH_M2H || {},
+               MATH_M2E: (currentResult.answers as any).sprMATH_M2E || {}
+             });
+             setFinalScore(currentResult.totalScore);
+             if (currentResult.totalMathScore) setMathScore(currentResult.totalMathScore);
+             if (currentResult.totalEnglishScore) setRwScore(currentResult.totalEnglishScore);
+             setPhase('results');
+          }
+        } catch(e) {
+          console.error("Failed to init review", e);
+        }
+      }
+    };
+    initReview();
+  }, [appUser?.uid, testId, testData]);
 
   // ── Question state ──
   const questions: DSATQuestion[] = testData ? (testData[moduleKey] ?? []) : [];
@@ -1029,19 +1066,15 @@ export default function TestPage() {
     if (!q) return;
     setLoadingExplanation(true);
     try {
-      const res = await fetch('/api/ai-explain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionText: q.text,
-          passage: q.passage,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-        })
-      });
-      const data = await res.json();
-      if (data.explanation) {
-        setDynamicExplanation(data.explanation);
+      const groqKey = localStorage.getItem('groq_api_key') || '';
+      const optionsText = q.options ? q.options.map((o:any, i:number) => `${String.fromCharCode(65+i)}) ${o}`).join('\n') : "Student Produced Response";
+      const res = await explainQuestionAction(q.text, optionsText, groqKey);
+      
+      if (res.success) {
+        setDynamicExplanation(res.data!);
+        setShowWhiteboard(true);
+      } else {
+        setDynamicExplanation(`Error: ${res.error}`);
         setShowWhiteboard(true);
       }
     } catch (err) {

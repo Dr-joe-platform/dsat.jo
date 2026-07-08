@@ -25,6 +25,8 @@ interface ParsedQuestion {
   id: string;
   type: 'MCQ' | 'SPR';
   passage?: string;
+  passageName?: string;
+  passageStartLine?: number;
   question: string;
   options: string[];
   correctAnswer: string;
@@ -511,7 +513,26 @@ export default function CreateCompleteTestPage() {
                               )}
                               {isPreview ? (
                                 <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.95rem', lineHeight: '1.6', color: '#1e293b' }}>
-                                  {q.passage && (
+                                  {q.passageName && (
+                                    <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}>
+                                      <h4 style={{ margin: '0 0 0.5rem 0', color: '#1e293b' }}>{q.passageName}</h4>
+                                      {q.passage && (
+                                        <div style={{ display: 'flex', gap: '1rem' }}>
+                                          {q.passageStartLine !== undefined && (
+                                            <div style={{ color: '#94a3b8', fontSize: '0.8rem', userSelect: 'none' }}>
+                                              {q.passage.split('\n').map((_: string, i: number) => (
+                                                <div key={i}>{(q.passageStartLine! + i) % 5 === 0 ? q.passageStartLine! + i : '\u00A0'}</div>
+                                              ))}
+                                            </div>
+                                          )}
+                                          <div>
+                                            <Latex>{q.passage}</Latex>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  {!q.passageName && q.passage && (
                                     <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}>
                                       <Latex>{q.passage}</Latex>
                                     </div>
@@ -547,6 +568,31 @@ export default function CreateCompleteTestPage() {
                                 </div>
                               ) : (
                                 <>
+                                  <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                                    <input
+                                      type="text"
+                                      value={q.passageName || ''}
+                                      onChange={(e) => {
+                                        const newQs = [...generatedQuestions];
+                                        newQs[idx].passageName = e.target.value;
+                                        setGeneratedQuestions(newQs);
+                                      }}
+                                      style={{ flex: 1, background: '#f8fafc', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '0.9rem', color: '#334155', border: '1px solid #cbd5e1' }}
+                                      placeholder="Passage Name (Optional - e.g., 'The Everyday Life of Abraham Lincoln')"
+                                    />
+                                    <input
+                                      type="number"
+                                      value={q.passageStartLine === undefined ? '' : q.passageStartLine}
+                                      onChange={(e) => {
+                                        const newQs = [...generatedQuestions];
+                                        newQs[idx].passageStartLine = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                                        setGeneratedQuestions(newQs);
+                                      }}
+                                      style={{ width: '150px', background: '#f8fafc', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '0.9rem', color: '#334155', border: '1px solid #cbd5e1' }}
+                                      placeholder="Start Line (e.g., 1)"
+                                    />
+                                  </div>
+
                                   <textarea
                                     value={q.passage || ''}
                                     onChange={(e) => {

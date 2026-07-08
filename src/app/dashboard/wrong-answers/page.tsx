@@ -7,6 +7,7 @@ import { AlertTriangle, ChevronRight, ChevronDown, RefreshCw, Bot, Loader2 } fro
 import { useAuth } from '@/lib/auth-context';
 import { getUserResults, getTestById, getMiniQuizById, TestResult } from '@/lib/db';
 import { ALL_TEST_QUESTIONS, DSATQuestion } from '@/lib/questions-data';
+import { explainQuestionAction } from '@/app/actions/ai-tutor';
 import Latex from 'react-latex-next';
 import WhiteboardStep from '@/components/WhiteboardStep';
 
@@ -42,22 +43,18 @@ export default function WrongAnswersPage() {
 
     setLoadingExplanation(prev => ({ ...prev, [wq.id]: true }));
     try {
-      const res = await fetch('/api/ai-explain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionText: wq.question.text,
-          passage: wq.question.passage,
-          options: wq.question.options,
-          correctAnswer: wq.question.correctAnswer,
-        })
-      });
-      const data = await res.json();
-      if (data.explanation) {
-        setExplanations(prev => ({ ...prev, [wq.id]: data.explanation }));
+      const groqKey = localStorage.getItem('groq_api_key') || '';
+      const optionsText = wq.question.options ? wq.question.options.map((o:any, i:number) => `${String.fromCharCode(65+i)}) ${o}`).join('\n') : "Student Produced Response";
+      const res = await explainQuestionAction(wq.question.text, optionsText, groqKey);
+      
+      if (res.success) {
+        setExplanations(prev => ({ ...prev, [wq.id]: res.data! }));
+      } else {
+        setExplanations(prev => ({ ...prev, [wq.id]: `Error: ${res.error}` }));
       }
     } catch (err) {
       console.error(err);
+      setExplanations(prev => ({ ...prev, [wq.id]: "An unexpected error occurred." }));
     } finally {
       setLoadingExplanation(prev => ({ ...prev, [wq.id]: false }));
     }
@@ -393,3 +390,4 @@ export default function WrongAnswersPage() {
     </div>
   );
 }
+

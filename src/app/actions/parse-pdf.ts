@@ -11,6 +11,9 @@ interface ParsedQuestion {
   id: string;
   module?: string;
   type: 'MCQ' | 'SPR';
+  passage?: string;
+  passageName?: string;
+  passageStartLine?: number;
   question: string;
   options: string[]; // empty for SPR
   correctAnswer: string;
@@ -56,6 +59,9 @@ The JSON array must contain objects with this EXACT structure:
   "id": "q1", // generate a unique ID like q1, q2...
   "module": ${targetModule ? `"${targetModule}"` : `"Module 1" | "Module 2", // IMPORTANT: Extract all questions, count them, and split them EVENLY. The first half MUST be "Module 1" and the second half MUST be "Module 2".`},
   "type": "MCQ" | "SPR", // MCQ for multiple choice, SPR for Student-Produced Response (grid-in)
+  "passageName": "The title of the passage if this question belongs to a reading passage (e.g. 'The Everyday Life of Abraham Lincoln')",
+  "passage": "The exact paragraph text this question is testing. Do NOT summarize. Leave empty for Math.",
+  "passageStartLine": 1, // The starting line number of this paragraph if provided in the text, otherwise null.
   "question": "The question text here...",
   "options": ["A) option 1", "B) option 2", "C) option 3", "D) option 4"], // Exactly 4 options for MCQ, empty array [] for SPR
   "correctAnswer": "A", // The correct option letter (A, B, C, D) for MCQ, or the exact string answer (e.g., "4.5") for SPR

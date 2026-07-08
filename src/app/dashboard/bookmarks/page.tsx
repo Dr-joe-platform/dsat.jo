@@ -7,6 +7,7 @@ import { BookMarked, Trash2, ArrowRight, Sparkles, Loader2, MessageCircle } from
 import { useAuth } from '@/lib/auth-context';
 import { getBookmarks, removeBookmark, Bookmark } from '@/lib/db';
 import { ALL_TEST_QUESTIONS, DSATQuestion } from '@/lib/questions-data';
+import { explainQuestionAction } from '@/app/actions/ai-tutor';
 import 'katex/dist/katex.min.css';
 import Latex from 'react-latex-next';
 
@@ -62,21 +63,18 @@ export default function BookmarksPage() {
 
     setExplaining(bm.id);
     try {
-      const res = await fetch('/api/ai-explain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionText: bm.questionText,
-          options: bm.options,
-          correctAnswer: bm.correctAnswer,
-        })
-      });
-      const data = await res.json();
-      if (data.explanation) {
-        setExplanations(prev => ({ ...prev, [bm.id]: data.explanation }));
+      const groqKey = localStorage.getItem('groq_api_key') || '';
+      const optionsText = bm.options ? bm.options.map((o:any, i:number) => `${String.fromCharCode(65+i)}) ${o}`).join('\n') : "Student Produced Response";
+      const res = await explainQuestionAction(bm.questionText, optionsText, groqKey);
+      
+      if (res.success) {
+        setExplanations(prev => ({ ...prev, [bm.id]: res.data! }));
+      } else {
+        setExplanations(prev => ({ ...prev, [bm.id]: `Error: ${res.error}` }));
       }
     } catch (err) {
       console.error(err);
+      setExplanations(prev => ({ ...prev, [bm.id]: 'An unexpected error occurred.' }));
     }
     setExplaining(null);
   };
