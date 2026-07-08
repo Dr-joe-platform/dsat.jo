@@ -509,7 +509,7 @@ export default function TestPage() {
       setModuleKey(nextModule);
       setCurrentIdx(0);
       setPhase('break'); 
-    } else if ((moduleKey === 'M2H' || moduleKey === 'M2E') && testData?.isFull) {
+    } else if ((moduleKey === 'M2H' || moduleKey === 'M2E') && testData?.subject === 'Full') {
       setModuleKey('MATH_M1');
       setCurrentIdx(0);
       setPhase('break');
