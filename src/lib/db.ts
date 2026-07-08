@@ -372,10 +372,10 @@ export async function getPublicTests(): Promise<FirestoreTest[]> {
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as FirestoreTest));
 }
 
-export async function getTestById(testId: string) {
+export async function getTestById(testId: string): Promise<AdminTestBank | null> {
   const snap = await getDoc(doc(db, 'tests', testId));
   if (!snap.exists()) return null;
-  return { id: snap.id, ...snap.data() };
+  return { id: snap.id, ...snap.data() } as AdminTestBank;
 }
 
 // ─── Assignments ──────────────────────────────────────────────────────────────

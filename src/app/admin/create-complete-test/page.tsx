@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { PenTool, UploadCloud, Loader2, Sparkles, Database, Search, ArrowLeft, Check, Users, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { parsePdfToQuestions } from '@/app/actions/parse-pdf';
@@ -89,9 +89,11 @@ export default function CreateCompleteTestPage() {
           source: test.source || 'Manual Entry',
           isPublic: test.isPublic || false
         });
-        if (test.modulesConfig) setModulesConfig(test.modulesConfig);
+        if (test.modulesConfig) {
+          setModulesConfig(prev => ({ ...prev, ...test.modulesConfig }));
+        }
         try {
-          const qs = JSON.parse(test.content);
+          const qs = JSON.parse(test.content || '[]');
           setGeneratedQuestions(qs);
         } catch(e) {
           console.error("Failed to parse test content", e);
@@ -252,7 +254,7 @@ export default function CreateCompleteTestPage() {
         isPublic: newTest.isPublic,
         createdAt: new Date().toISOString(),
         createdBy: appUser?.uid,
-        visibleTo: selectedStudents.includes('all') ? 'all' : selectedStudents,
+        visibleTo: (selectedStudents.includes('all') ? 'all' : selectedStudents) as 'all' | string[],
         content: JSON.stringify(generatedQuestions),
         modulesConfig,
       };
@@ -428,11 +430,11 @@ export default function CreateCompleteTestPage() {
             <div style={{ display: 'flex', gap: '1rem' }}>
               <div>
                 <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Questions</label>
-                <input type="number" min={1} value={modulesConfig.MATH_M2.questions} onChange={e => handleConfigChange('MATH_M2', 'questions', parseInt(e.target.value) || 22)} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+                <input type="number" min={1} value={modulesConfig.MATH_M2H.questions} onChange={e => handleConfigChange('MATH_M2H', 'questions', parseInt(e.target.value) || 22)} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
               </div>
               <div>
                 <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>Time (Minutes)</label>
-                <input type="number" min={1} value={modulesConfig.MATH_M2.time} onChange={e => handleConfigChange('MATH_M2', 'time', parseInt(e.target.value) || 35)} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+                <input type="number" min={1} value={modulesConfig.MATH_M2H.time} onChange={e => handleConfigChange('MATH_M2H', 'time', parseInt(e.target.value) || 35)} style={{ width: '100%', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
               </div>
             </div>
           </div>
