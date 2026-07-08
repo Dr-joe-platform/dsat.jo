@@ -141,6 +141,9 @@ export default function TestBankPage() {
       console.error(err);
       alert('Failed to save test: ' + err.message);
     }
+    setIsAdding(false);
+  };
+
   return (
     <div style={{ maxWidth: '1000px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
