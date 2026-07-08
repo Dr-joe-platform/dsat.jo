@@ -24,11 +24,11 @@ interface ParsedQuestion {
   imageUrl?: string;
 }
 
-export async function parsePdfToQuestions(formData: FormData, groqApiKey: string, targetModule?: string): Promise<{ success: boolean; data?: ParsedQuestion[]; error?: string }> {
+export async function parsePdfToQuestions(formData: FormData, geminiApiKey: string, targetModule?: string): Promise<{ success: boolean; data?: ParsedQuestion[]; error?: string }> {
   try {
     const file = formData.get('file') as File;
     if (!file) throw new Error('No PDF file provided');
-    if (!groqApiKey) throw new Error('Groq API Key is missing');
+    if (!geminiApiKey) throw new Error('Gemini API Key is missing');
 
     const buffer = await file.arrayBuffer();
     const pdfData = await pdfParse(Buffer.from(buffer));
@@ -38,19 +38,16 @@ export async function parsePdfToQuestions(formData: FormData, groqApiKey: string
       throw new Error('Could not extract any text from the PDF.');
     }
 
-    // Call Groq API
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    // Call Gemini API
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${groqApiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile', // excellent instruction following
-        messages: [
-          {
-            role: 'system',
-            content: `You are an expert SAT tutor and data extraction tool.
+        system_instruction: {
+          parts: [{
+            text: `You are an expert SAT tutor and data extraction tool.
 Your job is to read the raw text extracted from a PDF of a test and convert it into a strict JSON array of question objects.
 Return ONLY valid JSON. Do not include markdown formatting like \`\`\`json. Do not include any conversational text.
 
@@ -71,25 +68,30 @@ The JSON array must contain objects with this EXACT structure:
   "difficulty": "easy" | "medium" | "hard",
   "imageUrl": "" // Leave empty string by default. The teacher will upload images manually.
 }`
-          },
+          }]
+        },
+        contents: [
           {
-            role: 'user',
-            content: `Here is the raw text extracted from the PDF. Extract all the questions you can find into the requested JSON format (ensure exactly 44 or 54 questions if possible):\n\n${text}`
+            parts: [{
+              text: `Here is the raw text extracted from the PDF. Extract all the questions you can find into the requested JSON format (ensure exactly 44 or 54 questions if possible):\n\n${text}`
+            }]
           }
         ],
-        temperature: 0.1,
-        max_tokens: 8000,
+        generationConfig: {
+          temperature: 0.1,
+          responseMimeType: "application/json"
+        }
       })
     });
 
     if (!response.ok) {
       const err = await response.json();
-      throw new Error(err.error?.message || 'Failed to call Groq API');
+      throw new Error(err.error?.message || 'Failed to call Gemini API');
     }
 
     const data = await response.json();
-    let content = data.choices[0]?.message?.content?.trim() || '';
-    console.log('Groq Response Snippet:', content.substring(0, 500));
+    let content = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    console.log('Gemini Response Snippet:', content.substring(0, 500));
 
     // Strip markdown formatting if the model still included it
     if (content.startsWith('```json')) {
@@ -119,7 +121,7 @@ The JSON array must contain objects with this EXACT structure:
     
     // Quick validation
     if (!Array.isArray(parsedJson)) {
-      throw new Error('Groq did not return a valid JSON array.');
+      throw new Error('Gemini did not return a valid JSON array.');
     }
 
     if (parsedJson.length === 0) {

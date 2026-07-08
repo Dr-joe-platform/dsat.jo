@@ -114,15 +114,15 @@ export default function CreateCompleteTestPage() {
     type: 'pdf' | 'csv', 
     mod1Name: string, 
     mod2Name: string,
-    groqKey?: string
+    apiKey: string | undefined
   ): Promise<ParsedQuestion[]> => {
     if (mode === 'single') {
       if (!file1) throw new Error("Missing file.");
       if (type === 'pdf') {
-        if (!groqKey) throw new Error("GROQ API key is required for PDF parsing.");
+        if (!apiKey) throw new Error("API key is required for PDF parsing.");
         const form = new FormData();
         form.append('file', file1);
-        const res = await parsePdfToQuestions(form, groqKey);
+        const res = await parsePdfToQuestions(form, apiKey);
         if (!res.success || !res.data) throw new Error("PDF Error: " + res.error);
         
         const data = res.data;
@@ -147,14 +147,14 @@ export default function CreateCompleteTestPage() {
       if (!file1 || !file2) throw new Error("Please upload both files for split mode.");
       let merged: ParsedQuestion[] = [];
       if (type === 'pdf') {
-        if (!groqKey) throw new Error("GROQ API key is required for PDF parsing.");
+        if (!apiKey) throw new Error("API key is required for PDF parsing.");
         const form1 = new FormData(); form1.append('file', file1);
-        const res1 = await parsePdfToQuestions(form1, groqKey, mod1Name);
+        const res1 = await parsePdfToQuestions(form1, apiKey, mod1Name);
         if (!res1.success || !res1.data) throw new Error("PDF 1 Error: " + res1.error);
         merged = [...res1.data] as any[];
 
         const form2 = new FormData(); form2.append('file', file2);
-        const res2 = await parsePdfToQuestions(form2, groqKey, mod2Name);
+        const res2 = await parsePdfToQuestions(form2, apiKey, mod2Name);
         if (!res2.success || !res2.data) throw new Error("PDF 2 Error: " + res2.error);
         merged = [...merged, ...res2.data] as any[];
       } else {
@@ -183,10 +183,17 @@ export default function CreateCompleteTestPage() {
     setIsProcessing(true);
     setError(null);
     try {
-      const groqKey = localStorage.getItem('groq_api_key') || undefined;
+      const { getDoc, doc } = await import('firebase/firestore');
+      const { db } = await import('@/lib/firebase');
+      const snap = await getDoc(doc(db, 'settings', 'ai'));
+      const geminiKey = snap.exists() ? snap.data().gemini_api_key : undefined;
       
-      const englishQs = await processFiles(engFile1, engFile2, engMode, engType, "M1", "M2H", groqKey);
-      const mathQs = await processFiles(mathFile1, mathFile2, mathMode, mathType, "MATH_M1", "MATH_M2H", groqKey);
+      if (!geminiKey) {
+        throw new Error("Gemini API key is missing. Please add it in AI Settings.");
+      }
+
+      const englishQs = await processFiles(engFile1, engFile2, engMode, engType, "M1", "M2H", geminiKey);
+      const mathQs = await processFiles(mathFile1, mathFile2, mathMode, mathType, "MATH_M1", "MATH_M2H", geminiKey);
       
       const allQs = [...englishQs, ...mathQs];
       
