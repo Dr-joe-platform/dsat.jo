@@ -1119,6 +1119,7 @@ export interface QuizQuestion {
   question: string;
   options: string[];
   answer: number;
+  imageUrl?: string;
 }
 export interface MiniQuiz {
   teacherName?: string;
