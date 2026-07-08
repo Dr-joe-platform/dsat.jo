@@ -14,6 +14,7 @@ export default function MiniQuizzesPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const [newSubject, setNewSubject] = useState<'Math'|'English'|'Both'>('Both');
   
   // Adding/Editing questions
   const [addingQuestionTo, setAddingQuestionTo] = useState<string | null>(null);
@@ -21,6 +22,8 @@ export default function MiniQuizzesPage() {
   const [newQuestion, setNewQuestion] = useState('');
   const [newOptions, setNewOptions] = useState(['', '', '', '']);
   const [newAnswerIndex, setNewAnswerIndex] = useState(0);
+  const [newImageUrl, setNewImageUrl] = useState<string|undefined>(undefined);
+  const [previewMode, setPreviewMode] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     if (appUser?.uid) loadData();
@@ -66,7 +69,7 @@ export default function MiniQuizzesPage() {
         teacherId: 'admin',
         teacherName: 'Admin',
         title: newTitle,
-        subject: 'Both',
+        subject: newSubject,
         questions: [],
         isPublic: false
       });
@@ -91,13 +94,15 @@ export default function MiniQuizzesPage() {
         updatedQuestions[editingQuestionIndex] = {
           question: newQuestion,
           options: newOptions,
-          answer: newAnswerIndex
+          answer: newAnswerIndex,
+          imageUrl: newImageUrl
         };
       } else {
         updatedQuestions.push({
           question: newQuestion,
           options: newOptions,
-          answer: newAnswerIndex
+          answer: newAnswerIndex,
+          imageUrl: newImageUrl
         });
       }
       
@@ -107,6 +112,7 @@ export default function MiniQuizzesPage() {
       setNewQuestion('');
       setNewOptions(['', '', '', '']);
       setNewAnswerIndex(0);
+      setNewImageUrl(undefined);
       loadData();
     } catch (err) {
       console.error(err);
@@ -175,7 +181,11 @@ export default function MiniQuizzesPage() {
           <h3 style={{ fontWeight: '700', color: '#92400e', marginBottom: '1rem' }}>Create New Quiz</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem', marginBottom: '1rem' }}>
             <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Quiz title (e.g. Linear Equations Quick Check)" className="input-field" />
-            <div style={{ fontSize: '0.8rem', color: '#92400e', fontWeight: '600' }}>Subject: Both</div>
+            <select value={newSubject} onChange={e => setNewSubject(e.target.value as any)} className="input-field">
+              <option value="Both">Both</option>
+              <option value="Math">Math</option>
+              <option value="English">English</option>
+            </select>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button onClick={createQuiz} style={{ padding: '0.5rem 1.25rem', background: '#f59e0b', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: 'pointer' }}>Create</button>
@@ -234,17 +244,45 @@ export default function MiniQuizzesPage() {
                               setNewQuestion(q.question);
                               setNewOptions([...q.options]);
                               setNewAnswerIndex(q.answer);
+                              setNewImageUrl((q as any).imageUrl);
                             }} style={{ color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer' }}><Edit2 size={14} /></button>
                             <button onClick={() => handleDeleteQuestion(quiz, i)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><Trash2 size={14} /></button>
                           </div>
-                          <p style={{ fontWeight: '600', color: '#0f172a', fontSize: '0.875rem', marginBottom: '0.5rem', paddingRight: '4rem', whiteSpace: 'pre-wrap' }}>Q{i + 1}. {q.question}</p>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.25rem' }}>
-                            {q.options.map((opt, oi) => (
-                              <div key={oi} style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem', borderRadius: '0.25rem', background: oi === q.answer ? '#dcfce7' : 'transparent', color: oi === q.answer ? '#16a34a' : '#475569', fontWeight: oi === q.answer ? '700' : '400', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                {oi === q.answer && <Check size={10} />} {String.fromCharCode(65 + oi)}. {opt}
-                              </div>
-                            ))}
+                          
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', paddingRight: '4rem' }}>
+                            <span style={{ fontWeight: '600', color: '#0f172a', fontSize: '0.875rem' }}>Q{i + 1}.</span>
+                            <button onClick={() => setPreviewMode(prev => ({ ...prev, [i]: !prev[i] }))} style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', background: previewMode[i] ? '#e0e7ff' : '#fff', color: previewMode[i] ? '#4338ca' : '#475569', border: '1px solid #cbd5e1', borderRadius: '0.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              {previewMode[i] ? <EyeOff size={12} /> : <Eye size={12} />} {previewMode[i] ? 'Edit Mode' : 'Preview Student View'}
+                            </button>
                           </div>
+
+                          {(q as any).imageUrl && (
+                            <img src={(q as any).imageUrl} alt="Question" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '0.5rem', marginBottom: '0.5rem', border: '1px solid #cbd5e1' }} />
+                          )}
+                          
+                          {previewMode[i] ? (
+                            <div style={{ padding: '1rem', background: '#fff', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}>
+                              <div style={{ fontWeight: '600', marginBottom: '1rem', whiteSpace: 'pre-wrap' }}>{q.question}</div>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                {q.options.map((opt, oi) => (
+                                  <div key={oi} style={{ padding: '0.5rem', borderRadius: '0.5rem', border: oi === q.answer ? '1px solid #86efac' : '1px solid #e2e8f0', background: oi === q.answer ? '#dcfce7' : '#fff' }}>
+                                    <span style={{ fontWeight: '700', color: oi === q.answer ? '#16a34a' : '#64748b' }}>{String.fromCharCode(65 + oi)}.</span> {opt}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <p style={{ fontWeight: '600', color: '#0f172a', fontSize: '0.875rem', marginBottom: '0.5rem', whiteSpace: 'pre-wrap' }}>{q.question}</p>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.25rem' }}>
+                                {q.options.map((opt, oi) => (
+                                  <div key={oi} style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem', borderRadius: '0.25rem', background: oi === q.answer ? '#dcfce7' : 'transparent', color: oi === q.answer ? '#16a34a' : '#475569', fontWeight: oi === q.answer ? '700' : '400', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    {oi === q.answer && <Check size={10} />} {String.fromCharCode(65 + oi)}. {opt}
+                                  </div>
+                                ))}
+                              </div>
+                            </>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -277,12 +315,13 @@ export default function MiniQuizzesPage() {
                             setEditingQuestionIndex(null);
                           }} style={{ padding: '0.5rem 1rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer' }}>Cancel</button>
                         </div>
-                        <ImageUploader 
-                          onUpload={(url) => {
-                            setNewQuestion(prev => prev + `\n\n![Image](${url})`);
-                          }}
-                          buttonText="Attach Image"
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {newImageUrl && <img src={newImageUrl} alt="Preview" style={{ height: '30px', borderRadius: '4px' }} />}
+                          <ImageUploader 
+                            onUpload={(url) => setNewImageUrl(url)}
+                            buttonText={newImageUrl ? "Replace Image" : "Attach Image"}
+                          />
+                        </div>
                       </div>
                     </div>
                   ) : (

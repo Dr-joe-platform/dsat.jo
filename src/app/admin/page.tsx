@@ -66,7 +66,7 @@ export default function AdminDashboardPage() {
       
       setAllResultsCount(rData.length);
       if (rData.length > 0) {
-        setPlatformAvg(Math.round(rData.reduce((s, r) => s + r.totalScore, 0) / rData.length));
+        setPlatformAvg(Math.round((rData.reduce((s, r) => s + r.totalScore, 0) / rData.length) / 10) * 10);
       }
     } catch { /* empty */ }
     setLoading(false);

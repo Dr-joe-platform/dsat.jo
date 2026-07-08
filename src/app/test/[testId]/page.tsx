@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import AIExamCharacter from '@/components/AIExamCharacter';
 import {
   Eye, EyeOff, Bookmark, BookmarkCheck, ChevronLeft, ChevronRight,
   Grid3X3, X, AlertTriangle, Calculator, Flag, ChevronDown, ChevronUp,
@@ -727,6 +728,7 @@ export default function TestPage() {
               </p>
             </div>
           </div>
+          <AIExamCharacter phase="intro" activeHelpsLeft={activeHelpsLeft} onRequestHelp={() => setActiveHelpsLeft(p => p - 1)} />
           <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
             <button
               onClick={() => router.back()}
@@ -1645,7 +1647,7 @@ export default function TestPage() {
               <X size={16} />
             </button>
           </div>
-          <div style={{ flex: 1, padding: '1.5rem', overflowY: 'auto', fontFamily: 'sans-serif' }}>
+          <div style={{ flex: 1, padding: '1.5rem', overflowY: 'auto', fontFamily: 'sans-serif', color: '#1e293b' }}>
             <h3 style={{ textAlign: 'center', marginBottom: '1.5rem', fontWeight: '700' }}>Reference</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', textAlign: 'center' }}>
               {/* Row 1 */}
@@ -1731,6 +1733,10 @@ export default function TestPage() {
         </motion.div>
       )}
 
+      {/* AI Exam Character */}
+      {phase === 'testing' && (
+        <AIExamCharacter phase="testing" currentQuestion={q} activeHelpsLeft={activeHelpsLeft} onRequestHelp={() => setActiveHelpsLeft(p => p - 1)} />
+      )}
 
       {/* Anti-Cheat Modal */}
       {showCheatModal && (

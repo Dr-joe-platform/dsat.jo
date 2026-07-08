@@ -8,6 +8,17 @@ import { createTestBank, AdminTestBank, getAllUsers, AppUser } from '@/lib/db';
 import Link from 'next/link';
 import { parseQuestionsCSV, downloadCSVTemplate } from '@/lib/csv-parser';
 import ImageUploader from '@/components/ImageUploader';
+import Latex from 'react-latex-next';
+import 'katex/dist/katex.min.css';
+import { Eye, EyeOff, Trash2 } from 'lucide-react';
+
+const LATEX_DELIMITERS = [
+  { left: '$$', right: '$$', display: true },
+  { left: '$', right: '$', display: false },
+  { left: '\\(', right: '\\)', display: false },
+  { left: '\\[', right: '\\]', display: true }
+];
+
 import { X } from 'lucide-react';
 
 interface ParsedQuestion {
@@ -32,7 +43,8 @@ export default function CreateCompleteTestPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [previewJsonText, setPreviewJsonText] = useState<string | null>(null);
+  const [generatedQuestions, setGeneratedQuestions] = useState<any[] | null>(null);
+  const [previewMode, setPreviewMode] = useState<Record<number, boolean>>({});
   
   // English Files
   const [engMode, setEngMode] = useState<'single' | 'split'>('single');
@@ -178,7 +190,7 @@ export default function CreateCompleteTestPage() {
       
       if (allQs.length === 0) throw new Error("No questions extracted.");
       
-      setPreviewJsonText(JSON.stringify(allQs, null, 2));
+      setGeneratedQuestions(allQs);
 
     } catch (err: any) {
       setError(err.message);
@@ -190,12 +202,8 @@ export default function CreateCompleteTestPage() {
     setIsSaving(true);
     setError(null);
     try {
-      let finalQuestions = [];
-      try {
-        finalQuestions = JSON.parse(previewJsonText || "[]");
-      } catch (e) {
-        throw new Error("Invalid JSON formatting. Please fix before saving.");
-      }
+      let finalQuestions = generatedQuestions || [];
+      if (finalQuestions.length === 0) throw new Error("No questions to save.");
 
       const testData: Omit<AdminTestBank, 'id'> = {
         name: testName,
@@ -216,7 +224,7 @@ export default function CreateCompleteTestPage() {
       setEngFile1(null); setEngFile2(null);
       setMathFile1(null); setMathFile2(null);
       setTestName('');
-      setPreviewJsonText(null);
+      setGeneratedQuestions(null); setPreviewMode({});
       
     } catch (err: any) {
       setError(err.message);
@@ -421,31 +429,221 @@ export default function CreateCompleteTestPage() {
               </button>
             </div>
             
-            {/* Preview Modal */}
-            {previewJsonText !== null && (
+            {/* Preview Modal -> Replaced with Cards */}
+            {generatedQuestions !== null && (
               <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(4px)' }}>
                 <div className="stat-card" style={{ width: '90%', maxWidth: '1000px', height: '90vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '1rem', overflow: 'hidden' }}>
                   <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a' }}>Preview & Edit: {testName}</h3>
-                      <p style={{ fontSize: '0.875rem', color: '#64748b' }}>Check formatting before final save.</p>
+                      <p style={{ fontSize: '0.875rem', color: '#64748b' }}>Edit individual questions below before final save.</p>
                     </div>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                      <ImageUploader onUpload={(url) => alert(`Image URL: \n\n${url}\n\nCopy this and paste it into any question! (Markdown: ![img](${url}) )`)} buttonText="Upload Image to get Link" />
-                      <button onClick={() => setPreviewJsonText(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={20} color="#64748b" /></button>
+                      <button onClick={() => { setGeneratedQuestions(null); setPreviewMode({}); }} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={20} color="#64748b" /></button>
                     </div>
                   </div>
-                  <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
-                     <textarea 
-                       style={{ width: '100%', flex: 1, fontFamily: 'monospace', fontSize: '12px', padding: '1rem', border: '1px solid #cbd5e1', borderRadius: '0.5rem', resize: 'none' }}
-                       value={previewJsonText}
-                       onChange={(e) => setPreviewJsonText(e.target.value)}
-                       spellCheck={false}
-                     />
-                     <p style={{ fontSize: '12px', color: '#ef4444', marginTop: '0.5rem', fontWeight: '600' }}>Note: If you break the JSON formatting, it will fail to save.</p>
+                  
+                  <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {(() => {
+                      let currentModule = '';
+                      let moduleQuestionIndex = 0;
+                      return generatedQuestions.map((q, idx) => {
+                        const mod = q.module || 'General';
+                        const showHeader = mod !== currentModule;
+                        if (showHeader) {
+                          currentModule = mod as string;
+                          moduleQuestionIndex = 1;
+                        } else {
+                          moduleQuestionIndex++;
+                        }
+                        const isPreview = previewMode[idx];
+
+                        return (
+                          <React.Fragment key={idx}>
+                            {showHeader && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1rem 0 0.5rem' }}>
+                                <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#334155', margin: 0 }}>{mod}</h3>
+                                <div style={{ flex: 1, height: '2px', background: '#e2e8f0' }} />
+                              </div>
+                            )}
+                            <div style={{ padding: '1.25rem', background: '#fff', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                                <span style={{ fontWeight: '800', color: '#0f172a' }}>
+                                  Question {moduleQuestionIndex} 
+                                  {q.module && <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem', background: '#f3e8ff', color: '#7e22ce', borderRadius: '0.25rem', marginLeft: '0.5rem' }}>{q.module}</span>}
+                                  <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem', background: q.type === 'MCQ' ? '#dbeafe' : '#fce7f3', color: q.type === 'MCQ' ? '#1d4ed8' : '#be185d', borderRadius: '0.25rem', marginLeft: '0.5rem' }}>{q.type}</span>
+                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600' }}>{q.domain} &gt; {q.skill} ({q.difficulty})</span>
+                                  <button 
+                                    onClick={() => setPreviewMode(prev => ({ ...prev, [idx]: !prev[idx] }))}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.75rem', background: isPreview ? '#e0e7ff' : '#fff', color: isPreview ? '#4338ca' : '#475569', border: '1px solid #cbd5e1', borderRadius: '0.5rem', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer' }}
+                                  >
+                                    {isPreview ? <EyeOff size={14} /> : <Eye size={14} />}
+                                    {isPreview ? 'Edit Mode' : 'Preview Math (LaTeX)'}
+                                  </button>
+                                </div>
+                              </div>
+                              
+                              {q.imageUrl && (
+                                <div style={{ marginBottom: '1rem', position: 'relative', display: 'inline-block' }}>
+                                  <img src={q.imageUrl} alt="Question figure" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+                                  <button onClick={() => {
+                                    const newQs = [...generatedQuestions];
+                                    newQs[idx].imageUrl = undefined;
+                                    setGeneratedQuestions(newQs);
+                                  }} style={{ position: 'absolute', top: '-10px', right: '-10px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                                    &times;
+                                  </button>
+                                </div>
+                              )}
+                              {isPreview ? (
+                                <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.95rem', lineHeight: '1.6', color: '#1e293b' }}>
+                                  {q.passage && (
+                                    <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}>
+                                      <Latex>{q.passage}</Latex>
+                                    </div>
+                                  )}
+                                  <div style={{ fontWeight: '600', marginBottom: '1rem' }}>
+                                    <Latex delimiters={LATEX_DELIMITERS} strict={false}>{q.question}</Latex>
+                                  </div>
+                                  
+                                  {q.type === 'MCQ' ? (
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                      {q.options.map((opt: any, i: number) => {
+                                        const letter = String.fromCharCode(65 + i);
+                                        const isCorrect = letter === q.correctAnswer;
+                                        return (
+                                          <div key={i} style={{ padding: '0.75rem', background: isCorrect ? '#dcfce7' : '#fff', border: isCorrect ? '1px solid #86efac' : '1px solid #e2e8f0', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <span style={{ fontWeight: '700', color: isCorrect ? '#16a34a' : '#64748b' }}>{letter}.</span>
+                                            <span style={{ color: isCorrect ? '#166534' : '#334155' }}><Latex delimiters={LATEX_DELIMITERS} strict={false}>{opt}</Latex></span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', background: '#dcfce7', border: '1px solid #86efac', borderRadius: '0.5rem' }}>
+                                      <span style={{ fontWeight: '700', color: '#16a34a' }}>Correct Answer:</span>
+                                      <span style={{ color: '#166534', fontWeight: '600' }}>{q.correctAnswer}</span>
+                                    </div>
+                                  )}
+                                  
+                                  <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0', fontSize: '0.85rem', color: '#64748b' }}>
+                                    <strong style={{ color: '#0f172a' }}>Explanation:</strong> <br/>
+                                    <Latex>{q.explanation || ''}</Latex>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <textarea
+                                    value={q.passage || ''}
+                                    onChange={(e) => {
+                                      const newQs = [...generatedQuestions];
+                                      newQs[idx].passage = e.target.value;
+                                      setGeneratedQuestions(newQs);
+                                    }}
+                                    style={{ width: '100%', background: '#f8fafc', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem', fontSize: '0.9rem', color: '#334155', border: '1px solid #94a3b8', minHeight: '80px', resize: 'vertical' }}
+                                    placeholder="Passage (optional). Use $math$ for inline LaTeX and $$math$$ for block."
+                                  />
+                                  
+                                  <textarea
+                                    value={q.question}
+                                    onChange={(e) => {
+                                      const newQs = [...generatedQuestions];
+                                      newQs[idx].question = e.target.value;
+                                      setGeneratedQuestions(newQs);
+                                    }}
+                                    style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #cbd5e1', marginBottom: '1rem', minHeight: '80px', resize: 'vertical', fontSize: '0.95rem' }}
+                                    placeholder="Question Text. Use LaTeX syntax."
+                                  />
+                                  
+                                  {q.type === 'MCQ' && (
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                                      {q.options.map((opt: any, i: number) => {
+                                        const letter = String.fromCharCode(65 + i);
+                                        const isCorrect = letter === q.correctAnswer;
+                                        return (
+                                          <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                            <input 
+                                              type="radio" 
+                                              checked={isCorrect} 
+                                              onChange={() => {
+                                                const newQs = [...generatedQuestions];
+                                                newQs[idx].correctAnswer = letter;
+                                                setGeneratedQuestions(newQs);
+                                              }}
+                                              style={{ width: '1.25rem', height: '1.25rem' }}
+                                            />
+                                            <input
+                                              value={opt}
+                                              onChange={(e) => {
+                                                const newQs = [...generatedQuestions];
+                                                newQs[idx].options[i] = e.target.value;
+                                                setGeneratedQuestions(newQs);
+                                              }}
+                                              style={{ flex: 1, padding: '0.75rem', background: isCorrect ? '#dcfce7' : '#f8fafc', border: isCorrect ? '1px solid #86efac' : '1px solid #cbd5e1', borderRadius: '0.5rem', fontSize: '0.875rem', color: '#0f172a' }}
+                                            />
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+
+                                  {q.type === 'SPR' && (
+                                    <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                      <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#475569' }}>Correct Answer (SPR): </span>
+                                      <input
+                                        value={q.correctAnswer}
+                                        onChange={(e) => {
+                                          const newQs = [...generatedQuestions];
+                                          newQs[idx].correctAnswer = e.target.value;
+                                          setGeneratedQuestions(newQs);
+                                        }}
+                                        style={{ flex: 1, padding: '0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '0.5rem', fontSize: '0.9rem', color: '#0f172a' }}
+                                      />
+                                    </div>
+                                  )}
+
+                                  <textarea
+                                    value={q.explanation || ''}
+                                    onChange={(e) => {
+                                      const newQs = [...generatedQuestions];
+                                      newQs[idx].explanation = e.target.value;
+                                      setGeneratedQuestions(newQs);
+                                    }}
+                                    style={{ width: '100%', padding: '0.75rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px dashed #94a3b8', minHeight: '60px', resize: 'vertical', fontSize: '0.85rem' }}
+                                    placeholder="Explanation (Optional)"
+                                  />
+
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                                    <ImageUploader 
+                                      onUpload={(url) => {
+                                        const newQs = [...generatedQuestions];
+                                        newQs[idx].imageUrl = url;
+                                        setGeneratedQuestions(newQs);
+                                      }} 
+                                      buttonText={q.imageUrl ? "Replace Image" : "Attach Image to Question"}
+                                      style={{ background: '#f1f5f9' }}
+                                    />
+                                    <button onClick={() => {
+                                      const newQs = [...generatedQuestions];
+                                      newQs.splice(idx, 1);
+                                      setGeneratedQuestions(newQs);
+                                    }} style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '0.5rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
+                                      <Trash2 size={14} /> Remove Question
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </React.Fragment>
+                        );
+                      });
+                    })()}
                   </div>
+
                   <div style={{ padding: '1.25rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                    <button onClick={() => setPreviewJsonText(null)} style={{ padding: '0.75rem 1.5rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: 'pointer' }}>Back to Files</button>
+                    <button onClick={() => { setGeneratedQuestions(null); setPreviewMode({}); }} style={{ padding: '0.75rem 1.5rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: 'pointer' }}>Back to Files</button>
                     <button onClick={handleFinalSave} disabled={isSaving} style={{ padding: '0.75rem 1.5rem', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       {isSaving && <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />} Finalize & Save Test
                     </button>
