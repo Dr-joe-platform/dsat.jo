@@ -7,6 +7,8 @@ import { parsePdfToQuestions } from '@/app/actions/parse-pdf';
 import { createTestBank, AdminTestBank, getAllUsers, AppUser } from '@/lib/db';
 import Link from 'next/link';
 import { parseQuestionsCSV, downloadCSVTemplate } from '@/lib/csv-parser';
+import ImageUploader from '@/components/ImageUploader';
+import { X } from 'lucide-react';
 
 interface ParsedQuestion {
   id: string;
@@ -30,6 +32,7 @@ export default function CreateCompleteTestPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [previewJsonText, setPreviewJsonText] = useState<string | null>(null);
   
   // English Files
   const [engMode, setEngMode] = useState<'single' | 'split'>('single');
@@ -149,7 +152,7 @@ export default function CreateCompleteTestPage() {
     }
   };
 
-  const handleProcess = async () => {
+  const handleParseAndPreview = async () => {
     if (!testName.trim()) {
       setError("Please provide a test name.");
       return;
@@ -174,18 +177,36 @@ export default function CreateCompleteTestPage() {
       const allQs = [...englishQs, ...mathQs];
       
       if (allQs.length === 0) throw new Error("No questions extracted.");
+      
+      setPreviewJsonText(JSON.stringify(allQs, null, 2));
 
-      setIsSaving(true);
+    } catch (err: any) {
+      setError(err.message);
+    }
+    setIsProcessing(false);
+  };
+
+  const handleFinalSave = async () => {
+    setIsSaving(true);
+    setError(null);
+    try {
+      let finalQuestions = [];
+      try {
+        finalQuestions = JSON.parse(previewJsonText || "[]");
+      } catch (e) {
+        throw new Error("Invalid JSON formatting. Please fix before saving.");
+      }
+
       const testData: Omit<AdminTestBank, 'id'> = {
         name: testName,
         subject: 'Full',
-        questions: allQs.length,
+        questions: finalQuestions.length,
         source: 'Complete Exam Upload',
         createdAt: new Date().toISOString(),
         isPublic: selectedStudents.includes('all'),
         createdBy: appUser?.uid,
         visibleTo: selectedStudents.includes('all') ? 'all' : selectedStudents,
-        content: JSON.stringify(allQs),
+        content: JSON.stringify(finalQuestions),
         modulesConfig
       };
 
@@ -195,11 +216,11 @@ export default function CreateCompleteTestPage() {
       setEngFile1(null); setEngFile2(null);
       setMathFile1(null); setMathFile2(null);
       setTestName('');
+      setPreviewJsonText(null);
       
     } catch (err: any) {
       setError(err.message);
     }
-    setIsProcessing(false);
     setIsSaving(false);
   };
 
@@ -389,12 +410,51 @@ export default function CreateCompleteTestPage() {
               </div>
             ))}
             {filteredStudents.length === 0 && <div style={{ padding: '1rem', textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>No students found.</div>}
+            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={handleParseAndPreview}
+                disabled={isProcessing}
+                style={{ background: '#6366f1', color: '#fff', border: 'none', padding: '1rem 2rem', borderRadius: '0.75rem', fontWeight: '800', cursor: isProcessing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.1rem', boxShadow: '0 4px 6px -1px rgba(99, 102, 241, 0.4)' }}
+              >
+                {isProcessing ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={20} />}
+                Parse & Preview Test
+              </button>
+            </div>
+            
+            {/* Preview Modal */}
+            {previewJsonText !== null && (
+              <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(4px)' }}>
+                <div className="stat-card" style={{ width: '90%', maxWidth: '1000px', height: '90vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '1rem', overflow: 'hidden' }}>
+                  <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a' }}>Preview & Edit: {testName}</h3>
+                      <p style={{ fontSize: '0.875rem', color: '#64748b' }}>Check formatting before final save.</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                      <ImageUploader onUpload={(url) => alert(`Image URL: \n\n${url}\n\nCopy this and paste it into any question! (Markdown: ![img](${url}) )`)} buttonText="Upload Image to get Link" />
+                      <button onClick={() => setPreviewJsonText(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={20} color="#64748b" /></button>
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+                     <textarea 
+                       style={{ width: '100%', flex: 1, fontFamily: 'monospace', fontSize: '12px', padding: '1rem', border: '1px solid #cbd5e1', borderRadius: '0.5rem', resize: 'none' }}
+                       value={previewJsonText}
+                       onChange={(e) => setPreviewJsonText(e.target.value)}
+                       spellCheck={false}
+                     />
+                     <p style={{ fontSize: '12px', color: '#ef4444', marginTop: '0.5rem', fontWeight: '600' }}>Note: If you break the JSON formatting, it will fail to save.</p>
+                  </div>
+                  <div style={{ padding: '1.25rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                    <button onClick={() => setPreviewJsonText(null)} style={{ padding: '0.75rem 1.5rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: 'pointer' }}>Back to Files</button>
+                    <button onClick={handleFinalSave} disabled={isSaving} style={{ padding: '0.75rem 1.5rem', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {isSaving && <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />} Finalize & Save Test
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-
-        <button onClick={handleProcess} disabled={isProcessing || isSaving} style={{ width: '100%', padding: '1rem', background: '#0f172a', color: '#fff', border: 'none', borderRadius: '0.75rem', fontWeight: '800', marginTop: '2rem', cursor: (isProcessing || isSaving) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-          {(isProcessing || isSaving) ? <><Loader2 size={18} className="spin" /> Uploading Exam...</> : <><Sparkles size={18} /> Submit Complete Exam</>}
-        </button>
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { parseQuestionsCSV } from '@/lib/csv-parser';
 import { parsePdfToQuestions } from '@/app/actions/parse-pdf';
 import { useRef } from 'react';
+import ImageUploader from '@/components/ImageUploader';
 
 export default function TestBankPage() {
   const { appUser } = useAuth();
@@ -23,6 +24,11 @@ export default function TestBankPage() {
   const [fileType, setFileType] = useState<'pdf' | 'csv'>('csv');
   const [file, setFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [file2, setFile2] = useState<File | null>(null);
+  const file2Ref = useRef<HTMLInputElement>(null);
+  
+  // Preview State
+  const [previewJsonText, setPreviewJsonText] = useState<string | null>(null);
 
   const loadTests = async () => {
     setLoading(true);
@@ -54,13 +60,11 @@ export default function TestBankPage() {
     await addActivityLog({ type: 'admin', action: 'Test Deleted', user: appUser?.email || 'Admin', details: `Deleted test: ${name}`, severity: 'error' });
   };
 
-  const handleAddTest = async (e: React.FormEvent) => {
+  const handleParseAndPreview = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAdding(true);
     try {
-      let questionsContent = "[]";
-      let qCount = newTest.questions;
-
+      let finalData: any[] = [];
       if (file) {
         if (fileType === 'pdf') {
           const groqKey = localStorage.getItem('groq_api_key') || undefined;
@@ -69,33 +73,54 @@ export default function TestBankPage() {
           form.append('file', file);
           const res = await parsePdfToQuestions(form, groqKey);
           if (!res.success || !res.data) throw new Error(res.error || "Failed to parse PDF");
-          questionsContent = JSON.stringify(res.data);
-          qCount = res.data.length;
+          finalData = res.data;
         } else {
-          const data = await parseQuestionsCSV(file);
-          questionsContent = JSON.stringify(data);
-          qCount = data.length;
+          finalData = await parseQuestionsCSV(file);
+          if (file2) {
+             const data2 = await parseQuestionsCSV(file2);
+             finalData = [...finalData, ...data2];
+          }
         }
+      }
+      setPreviewJsonText(JSON.stringify(finalData, null, 2));
+      setNewTest(prev => ({ ...prev, questions: finalData.length || prev.questions }));
+    } catch (err: any) {
+      console.error(err);
+      alert('Failed to parse test: ' + err.message);
+    }
+    setIsAdding(false);
+  };
+
+  const handleFinalSave = async () => {
+    setIsAdding(true);
+    try {
+      let finalQuestions = [];
+      try {
+        finalQuestions = JSON.parse(previewJsonText || "[]");
+      } catch (e) {
+        throw new Error("Invalid JSON formatting. Please fix before saving.");
       }
 
       const testData = {
         name: newTest.name,
         subject: newTest.subject,
-        questions: qCount,
+        questions: finalQuestions.length || newTest.questions,
         difficulty: 'Mixed',
         source: newTest.source,
         isPublic: false,
-        content: questionsContent,
+        content: JSON.stringify(finalQuestions),
       };
       await createTestBank(testData);
       await addActivityLog({ type: 'admin', action: 'Test Created', user: appUser?.email || 'Admin', details: `Created test: ${newTest.name}`, severity: 'info' });
       await loadTests();
       setShowAddModal(false);
+      setPreviewJsonText(null);
       setNewTest({ name: '', subject: 'Math', questions: 44, source: 'Manual Entry' });
       setFile(null);
+      setFile2(null);
     } catch (err: any) {
       console.error(err);
-      alert('Failed to add test: ' + err.message);
+      alert('Failed to save test: ' + err.message);
     }
     setIsAdding(false);
   };
@@ -136,11 +161,11 @@ export default function TestBankPage() {
       </div>
 
       {/* Add Test Modal */}
-      {showAddModal && (
+      {showAddModal && previewJsonText === null && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: '#fff', borderRadius: '1rem', padding: '2rem', width: '100%', maxWidth: '400px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: '800', marginBottom: '1.5rem' }}>Add New Test</h2>
-            <form onSubmit={handleAddTest} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <form onSubmit={handleParseAndPreview} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginBottom: '0.25rem' }}>Test Name</label>
                 <input type="text" required value={newTest.name} onChange={e => setNewTest({ ...newTest, name: e.target.value })} className="input-field" placeholder="e.g. DSAT Practice 4" />
@@ -176,18 +201,62 @@ export default function TestBankPage() {
                   </select>
                 </div>
                 <input type="file" ref={fileRef} accept={fileType === 'pdf' ? '.pdf' : '.csv'} style={{ display: 'none' }} onChange={e => e.target.files && setFile(e.target.files[0])} />
-                <button type="button" onClick={() => fileRef.current?.click()} style={{ width: '100%', padding: '0.75rem', background: '#fff', border: '1px dashed #cbd5e1', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.8rem', fontWeight: '600', color: '#475569' }}>
+                <button type="button" onClick={() => fileRef.current?.click()} style={{ width: '100%', padding: '0.75rem', background: '#fff', border: '1px dashed #cbd5e1', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.8rem', fontWeight: '600', color: '#475569', marginBottom: fileType === 'csv' ? '0.5rem' : '0' }}>
                   <UploadCloud size={16} />
-                  {file ? file.name : `Select ${fileType.toUpperCase()} file...`}
+                  {file ? file.name : `Select ${fileType.toUpperCase()} file 1...`}
                 </button>
+
+                {fileType === 'csv' && (
+                  <>
+                    <input type="file" ref={file2Ref} accept=".csv" style={{ display: 'none' }} onChange={e => e.target.files && setFile2(e.target.files[0])} />
+                    <button type="button" onClick={() => file2Ref.current?.click()} style={{ width: '100%', padding: '0.75rem', background: '#fff', border: '1px dashed #cbd5e1', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.8rem', fontWeight: '600', color: '#475569' }}>
+                      <UploadCloud size={16} />
+                      {file2 ? file2.name : `Select CSV file 2 (Optional)`}
+                    </button>
+                  </>
+                )}
+
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
                 <button type="button" onClick={() => setShowAddModal(false)} style={{ flex: 1, padding: '0.75rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: 'pointer' }}>Cancel</button>
                 <button type="submit" disabled={isAdding} style={{ flex: 1, padding: '0.75rem', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                  {isAdding ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : 'Create Test'}
+                  {isAdding ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : 'Parse & Preview'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Preview JSON Modal */}
+      {showAddModal && previewJsonText !== null && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(4px)' }}>
+          <div className="stat-card" style={{ width: '90%', maxWidth: '1000px', height: '90vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '1rem', overflow: 'hidden' }}>
+            <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a' }}>Preview & Edit: {newTest.name}</h3>
+                <p style={{ fontSize: '0.875rem', color: '#64748b' }}>Check formatting. You can edit this JSON directly.</p>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <ImageUploader onUpload={(url) => alert(`Image URL: \n\n${url}\n\nCopy this and paste it into any question! (Markdown: ![img](${url}) )`)} buttonText="Upload Image to get Link" />
+                <button onClick={() => setPreviewJsonText(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={20} color="#64748b" /></button>
+              </div>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+               <textarea 
+                 style={{ width: '100%', flex: 1, fontFamily: 'monospace', fontSize: '12px', padding: '1rem', border: '1px solid #cbd5e1', borderRadius: '0.5rem', resize: 'none' }}
+                 value={previewJsonText}
+                 onChange={(e) => setPreviewJsonText(e.target.value)}
+                 spellCheck={false}
+               />
+               <p style={{ fontSize: '12px', color: '#ef4444', marginTop: '0.5rem', fontWeight: '600' }}>Note: If you break the JSON formatting (missing quotes, brackets), it will fail to save. Use the Upload button above to generate image links.</p>
+            </div>
+            <div style={{ padding: '1.25rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button onClick={() => setPreviewJsonText(null)} style={{ padding: '0.75rem 1.5rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: 'pointer' }}>Back to Files</button>
+              <button onClick={handleFinalSave} disabled={isAdding} style={{ padding: '0.75rem 1.5rem', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {isAdding && <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />} Finalize & Save Test
+              </button>
+            </div>
           </div>
         </div>
       )}
