@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useNotifications } from '@/lib/hooks/useNotifications';
-import { getUserStats, getUsersByTeacherCode, getFeatureControls } from '@/lib/db';
+import { getUserStats, getUsersByTeacherCode, getFeatureControls, getTrialSettings, TrialSettings } from '@/lib/db';
 import TextSelectionTooltip from '@/components/TextSelectionTooltip';
 import GlobalVocabWidget from '@/components/GlobalVocabWidget';
 
@@ -79,6 +79,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showNotifs, setShowNotifs] = useState(false);
   const [streak, setStreak] = useState(0);
   const [disabledFeatures, setDisabledFeatures] = useState<string[]>([]);
+  const [trialSettings, setTrialSettings] = useState<TrialSettings | null>(null);
   const notifsRef = useRef<HTMLDivElement>(null);
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
 
@@ -123,6 +124,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     fetchControls();
   }, [appUser?.teacherCode]);
 
+  // Load Trial Settings if pending
+  useEffect(() => {
+    if (appUser?.status === 'pending') {
+      getTrialSettings().then(setTrialSettings).catch(console.error);
+    }
+  }, [appUser?.status]);
+
   // Close notif panel on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -153,7 +161,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setCollapsedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
-  const ALLOWED_TRIAL_ROUTES = ['/dashboard', '/dashboard/practice', '/dashboard/settings', '/dashboard/upgrade'];
   const isFeatureLocked = (href: string) => {
     // 1. Check if teacher explicitly disabled it
     if (disabledFeatures.includes(href)) return 'teacher_locked';
@@ -161,7 +168,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     // 2. Check trial mode locking
     if (appUser?.status === 'pending') {
       if (href.startsWith('/dashboard/checkout')) return false;
-      if (!ALLOWED_TRIAL_ROUTES.includes(href)) return 'trial_locked';
+      // Allow specific routes that are essential (home, settings, upgrade, support)
+      if (['/dashboard', '/dashboard/settings', '/dashboard/upgrade', '/dashboard/support'].includes(href)) return false;
+      
+      // Now check admin-configured Trial Settings
+      if (trialSettings && !trialSettings.allowedFeatures.includes(href)) {
+        return 'trial_locked';
+      } else if (!trialSettings) {
+        // If settings haven't loaded yet, default to locked to prevent flashing
+        return 'trial_locked';
+      }
     }
     return false;
   };

@@ -59,10 +59,6 @@ export interface TestResult {
   skills?: { skill: string; correct: boolean }[];
 }
 
-export interface TrialSettings {
-  allowedFeatures: string[]; // e.g. ['/dashboard', '/dashboard/practice', '/dashboard/settings', '/dashboard/upgrade']
-  allowedTests: string[]; // Array of AdminTestBank test IDs visible to pending users
-}
 
 // ─── Users ────────────────────────────────────────────────────────────────────
 
@@ -348,7 +344,7 @@ export async function getTrialSettings(): Promise<TrialSettings> {
   }
   // Fallback defaults
   return {
-    allowedFeatures: ['/dashboard', '/dashboard/practice', '/dashboard/settings', '/dashboard/upgrade'],
+    allowedFeatures: [],
     allowedTests: [],
   };
 }

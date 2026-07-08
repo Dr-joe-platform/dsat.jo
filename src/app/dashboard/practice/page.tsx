@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Play, Clock, BarChart2, Target, BookOpen, Lock, ChevronRight, Calendar, TrendingUp, Zap } from 'lucide-react';
 import { useResults } from '@/lib/hooks/useResults';
 import { useAuth } from '@/lib/auth-context';
-import { getTestBanks, AdminTestBank } from '@/lib/db';
+import { getTestBanks, AdminTestBank, getTrialSettings, TrialSettings } from '@/lib/db';
 import { filterItemsBySubject } from '@/lib/subject-filter';
 
 
@@ -75,14 +75,19 @@ export default function PracticePage() {
   
   const [dbTests, setDbTests] = useState<AdminTestBank[]>([]);
   const [dbLoading, setDbLoading] = useState(true);
+  const [trialSettings, setTrialSettings] = useState<TrialSettings | null>(null);
 
   useEffect(() => {
     if (!appUser?.uid) return;
-    getTestBanks(appUser.uid, appUser.role).then(tests => {
+    Promise.all([
+      getTestBanks(appUser.uid, appUser.role),
+      appUser.status === 'pending' ? getTrialSettings() : Promise.resolve(null)
+    ]).then(([tests, settings]) => {
       setDbTests(tests);
+      setTrialSettings(settings);
       setDbLoading(false);
     }).catch(() => setDbLoading(false));
-  }, [appUser?.uid, appUser?.role, appUser?.subject]);
+  }, [appUser?.uid, appUser?.role, appUser?.subject, appUser?.status]);
 
   const loading = resultsLoading || authLoading || dbLoading;
 
@@ -124,7 +129,10 @@ export default function PracticePage() {
     };
   });
 
-  const adminTests = dbTests.filter(t => !t.teacherId);
+  let adminTests = dbTests.filter(t => !t.teacherId);
+  if (appUser?.status === 'pending' && trialSettings) {
+    adminTests = adminTests.filter(t => trialSettings.allowedTests.includes(t.id!));
+  }
   const teacherTests = dbTests.filter(t => !!t.teacherId);
 
   const completeTests = mapDbTests(adminTests.filter(t => t.subject === 'Mixed' || t.subject === 'Full'));

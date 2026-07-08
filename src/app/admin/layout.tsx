@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { BarChart2, Users, Database, Lock, ClipboardList, Terminal, Bot, Settings, LogOut, ChevronLeft, ChevronRight, MessageSquare, Library, CreditCard, MessageCircle, PenTool, Zap } from 'lucide-react';
+import { BarChart2, Users, Database, Lock, ClipboardList, Terminal, Bot, Settings, LogOut, ChevronLeft, ChevronRight, MessageSquare, Library, CreditCard, MessageCircle, PenTool, Zap, Shield } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
 const adminNav = [
@@ -19,6 +19,7 @@ const adminNav = [
   { href: '/admin/ai-settings', icon: Bot, label: 'AI Settings' },
   { href: '/admin/ebooks', icon: Library, label: 'Global E-Books' },
   { href: '/admin/pricing', icon: CreditCard, label: 'Pricing Plans' },
+  { href: '/admin/trial-settings', icon: Shield, label: 'Trial Mode Settings' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
