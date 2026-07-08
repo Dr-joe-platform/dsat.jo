@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth-context';
 import { getUserResults, TestResult } from '../db';
-import { filterResultsBySubject, normalizeSubject } from '../subject-filter';
+import { filterItemsForStudent, normalizeSubject } from '../subject-filter';
 
 export interface ComputedStats {
   results: TestResult[];
@@ -26,7 +26,7 @@ export function useResults(): ComputedStats {
   useEffect(() => {
     if (!appUser?.uid) { setLoading(false); return; }
     getUserResults(appUser.uid).then(async r => {
-      const filtered = filterResultsBySubject(r, appUser.subject);
+      const filtered = filterItemsForStudent(r, appUser.subject);
       setResults(filtered);
       setLoading(false);
     }).catch(() => setLoading(false));

@@ -35,11 +35,6 @@ export default function TestBankPage() {
     M1: { questions: 27, time: 32, name: 'Reading and Writing Module 1' },
     M2: { questions: 27, time: 32, name: 'Reading and Writing Module 2' }
   });
-
-  // Edit Test Modal State
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editTest, setEditTest] = useState<Partial<AdminTestBank> & { id?: string }>({});
-
   const handleConfigChange = (mod: string, field: 'questions' | 'time' | 'name', value: number | string) => {
     setModulesConfig(prev => ({
       ...prev,
@@ -146,29 +141,6 @@ export default function TestBankPage() {
       console.error(err);
       alert('Failed to save test: ' + err.message);
     }
-    setIsAdding(false);
-  };
-
-  const handleUpdateTest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editTest.id) return;
-    setIsAdding(true);
-    try {
-      await updateTestBank(editTest.id, {
-        name: editTest.name,
-        subject: editTest.subject,
-        source: editTest.source
-      });
-      await addActivityLog({ type: 'admin', action: 'Test Updated', user: appUser?.email || 'Admin', details: `Updated test: ${editTest.name}`, severity: 'info' });
-      await loadTests();
-      setShowEditModal(false);
-    } catch (err: any) {
-      console.error(err);
-      alert('Failed to update test: ' + err.message);
-    }
-    setIsAdding(false);
-  };
-
   return (
     <div style={{ maxWidth: '1000px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
@@ -567,9 +539,9 @@ export default function TestBankPage() {
                   </td>
                   <td style={{ padding: '0.875rem 1rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button onClick={() => { setEditTest(test); setShowEditModal(true); }} style={{ color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: '600' }}>
+                      <Link href={`/admin/create-complete-test?edit=${test.id}`} style={{ color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: '600', textDecoration: 'none' }}>
                         <Edit size={12} /> Edit
-                      </button>
+                      </Link>
                       <button onClick={() => handleDelete(test.id!, test.name)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: '600' }}>
                         <Trash2 size={12} /> Delete
                       </button>
@@ -581,40 +553,6 @@ export default function TestBankPage() {
           </table>
         )}
       </div>
-
-      {/* Edit Test Modal */}
-      {showEditModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: '1rem', padding: '2rem', width: '100%', maxWidth: '400px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: '800', marginBottom: '1.5rem' }}>Edit Test Details</h2>
-            <form onSubmit={handleUpdateTest} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginBottom: '0.25rem' }}>Test Name</label>
-                <input type="text" required value={editTest.name || ''} onChange={e => setEditTest({ ...editTest, name: e.target.value })} className="input-field" />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginBottom: '0.25rem' }}>Subject</label>
-                <select value={editTest.subject || 'Math'} onChange={e => setEditTest({ ...editTest, subject: e.target.value })} className="input-field">
-                  <option value="Math">Math</option>
-                  <option value="English">English</option>
-                  <option value="Mixed">Mixed</option>
-                  <option value="Full">Full</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginBottom: '0.25rem' }}>Source / Notes</label>
-                <input type="text" value={editTest.source || ''} onChange={e => setEditTest({ ...editTest, source: e.target.value })} className="input-field" />
-              </div>
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                <button type="button" onClick={() => setShowEditModal(false)} style={{ flex: 1, padding: '0.75rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" disabled={isAdding} style={{ flex: 1, padding: '0.75rem', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                  {isAdding ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
     </div>
   );

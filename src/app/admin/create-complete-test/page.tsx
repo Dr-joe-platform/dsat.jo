@@ -4,8 +4,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { PenTool, UploadCloud, Loader2, Sparkles, Database, Search, ArrowLeft, Check, Users, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { parsePdfToQuestions } from '@/app/actions/parse-pdf';
-import { createTestBank, AdminTestBank, getAllUsers, AppUser } from '@/lib/db';
+import { createTestBank, updateTestBank, getTestById, AdminTestBank, getAllUsers, AppUser } from '@/lib/db';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { parseQuestionsCSV, downloadCSVTemplate } from '@/lib/csv-parser';
 import ImageUploader from '@/components/ImageUploader';
 import Latex from 'react-latex-next';
@@ -39,6 +40,8 @@ interface ParsedQuestion {
 
 export default function CreateCompleteTestPage() {
   const { appUser } = useAuth();
+  const searchParams = useSearchParams();
+  const editId = searchParams?.get('edit');
   
   const [testName, setTestName] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -60,18 +63,47 @@ export default function CreateCompleteTestPage() {
   const [mathFile1, setMathFile1] = useState<File | null>(null);
   const [mathFile2, setMathFile2] = useState<File | null>(null);
 
-  // Audience
-  const [students, setStudents] = useState<AppUser[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStudents, setSelectedStudents] = useState<string[]>(['all']);
-
-  // Modules Config
   const [modulesConfig, setModulesConfig] = useState({
     M1: { questions: 27, time: 32, name: 'Reading and Writing Module 1' },
     M2: { questions: 27, time: 32, name: 'Reading and Writing Module 2' },
     MATH_M1: { questions: 22, time: 35, name: 'Math Module 1' },
-    MATH_M2: { questions: 22, time: 35, name: 'Math Module 2' }
+    MATH_M2H: { questions: 22, time: 35, name: 'Math Module 2 (Hard)' },
+    MATH_M2E: { questions: 22, time: 35, name: 'Math Module 2 (Easy)' },
   });
+
+  const [newTest, setNewTest] = useState({
+    name: '',
+    subject: 'Mixed',
+    source: 'Complete Exam Upload',
+    isPublic: false
+  });
+
+  useEffect(() => {
+    if (editId) {
+      getTestById(editId).then(test => {
+        if (!test) return;
+        setTestName(test.name);
+        setNewTest({
+          name: test.name,
+          subject: test.subject || 'Mixed',
+          source: test.source || 'Manual Entry',
+          isPublic: test.isPublic || false
+        });
+        if (test.modulesConfig) setModulesConfig(test.modulesConfig);
+        try {
+          const qs = JSON.parse(test.content);
+          setGeneratedQuestions(qs);
+        } catch(e) {
+          console.error("Failed to parse test content", e);
+        }
+      });
+    }
+  }, [editId]);
+
+  // Audience
+  const [students, setStudents] = useState<AppUser[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStudents, setSelectedStudents] = useState<string[]>(['all']);
 
   const handleConfigChange = (mod: string, field: 'questions' | 'time' | 'name', value: number | string) => {
     setModulesConfig(prev => ({
@@ -208,35 +240,38 @@ export default function CreateCompleteTestPage() {
   };
 
   const handleFinalSave = async () => {
+    if (!generatedQuestions || generatedQuestions.length === 0) return;
     setIsSaving(true);
     setError(null);
     try {
-      let finalQuestions = generatedQuestions || [];
-      if (finalQuestions.length === 0) throw new Error("No questions to save.");
-
-      const testData: Omit<AdminTestBank, 'id'> = {
-        name: testName,
-        subject: 'Full',
-        questions: finalQuestions.length,
-        source: 'Complete Exam Upload',
+      const payload = {
+        name: newTest.name || testName || 'Untitled Test',
+        subject: newTest.subject,
+        questions: generatedQuestions.length,
+        source: newTest.source,
+        isPublic: newTest.isPublic,
         createdAt: new Date().toISOString(),
-        isPublic: selectedStudents.includes('all'),
         createdBy: appUser?.uid,
         visibleTo: selectedStudents.includes('all') ? 'all' : selectedStudents,
-        content: JSON.stringify(finalQuestions),
-        modulesConfig
+        content: JSON.stringify(generatedQuestions),
+        modulesConfig,
       };
 
-      await createTestBank(testData);
+      if (editId) {
+        await updateTestBank(editId, payload);
+      } else {
+        await createTestBank(payload);
+      }
+
       setSaveSuccess(true);
-      
-      setEngFile1(null); setEngFile2(null);
-      setMathFile1(null); setMathFile2(null);
-      setTestName('');
-      setGeneratedQuestions(null); setPreviewMode({});
-      
+      setTimeout(() => setSaveSuccess(false), 3000);
+      if (!editId) {
+        setGeneratedQuestions(null);
+        setTestName('');
+      }
     } catch (err: any) {
-      setError(err.message);
+      console.error(err);
+      setError(err.message || 'Failed to save test.');
     }
     setIsSaving(false);
   };
@@ -708,9 +743,9 @@ export default function CreateCompleteTestPage() {
                   </div>
 
                   <div style={{ padding: '1.25rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                    <button onClick={() => { setGeneratedQuestions(null); setPreviewMode({}); }} style={{ padding: '0.75rem 1.5rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: 'pointer' }}>Back to Files</button>
+                    <button onClick={() => { if(!editId) { setGeneratedQuestions(null); setPreviewMode({}); } else { window.history.back(); } }} style={{ padding: '0.75rem 1.5rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: 'pointer' }}>{editId ? 'Go Back' : 'Back to Files'}</button>
                     <button onClick={handleFinalSave} disabled={isSaving} style={{ padding: '0.75rem 1.5rem', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      {isSaving && <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />} Finalize & Save Test
+                      {isSaving && <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />} {editId ? 'Update & Save Test' : 'Finalize & Save Test'}
                     </button>
                   </div>
                 </div>
