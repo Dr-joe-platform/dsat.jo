@@ -90,7 +90,20 @@ export default function CreateCompleteTestPage() {
           isPublic: test.isPublic || false
         });
         if (test.modulesConfig) {
-          setModulesConfig(prev => ({ ...prev, ...test.modulesConfig }));
+          setModulesConfig(prev => {
+            const merged = { ...prev };
+            if (test.modulesConfig?.M1) merged.M1 = { ...prev.M1, ...test.modulesConfig.M1 };
+            if (test.modulesConfig?.M2) merged.M2 = { ...prev.M2, ...test.modulesConfig.M2 };
+            if (test.modulesConfig?.MATH_M1) merged.MATH_M1 = { ...prev.MATH_M1, ...test.modulesConfig.MATH_M1 };
+            if (test.modulesConfig?.MATH_M2H) merged.MATH_M2H = { ...prev.MATH_M2H, ...test.modulesConfig.MATH_M2H };
+            if (test.modulesConfig?.MATH_M2E) merged.MATH_M2E = { ...prev.MATH_M2E, ...test.modulesConfig.MATH_M2E };
+            if (test.modulesConfig?.MATH_M2) {
+                const legacy = test.modulesConfig.MATH_M2;
+                merged.MATH_M2H = { ...prev.MATH_M2H, ...legacy };
+                merged.MATH_M2E = { ...prev.MATH_M2E, ...legacy };
+            }
+            return merged;
+          });
         }
         try {
           const qs = JSON.parse(test.content || '[]');

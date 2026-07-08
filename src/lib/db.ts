@@ -730,10 +730,12 @@ export interface AdminTestBank {
   isMiniQuiz?: boolean;
   customTime?: number;
   modulesConfig?: {
-    M1?: { time: number, questions: number },
-    M2?: { time: number, questions: number },
-    MATH_M1?: { time: number, questions: number },
-    MATH_M2?: { time: number, questions: number }
+    M1?: { time: number, questions: number, name?: string },
+    M2?: { time: number, questions: number, name?: string },
+    MATH_M1?: { time: number, questions: number, name?: string },
+    MATH_M2?: { time: number, questions: number, name?: string },
+    MATH_M2H?: { time: number, questions: number, name?: string },
+    MATH_M2E?: { time: number, questions: number, name?: string }
   };
 }
 
