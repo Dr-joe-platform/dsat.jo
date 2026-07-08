@@ -53,25 +53,18 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
         transition: 'width 0.25s ease', overflow: 'hidden',
         zIndex: 50, flexShrink: 0,
       }}>
-        <div style={{ padding: collapsed ? '1rem 0' : '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', borderBottom: '1px solid #f1f5f9', minHeight: '60px' }}>
-          {!collapsed && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #6d28d9, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '800', fontSize: '0.8rem', flexShrink: 0, overflow: 'hidden' }}>
-                {appUser.photoURL ? (
-                  <img src={appUser.photoURL} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  (appUser.displayName || 'T')[0].toUpperCase()
-                )}
-              </div>
+        <div style={{ padding: collapsed ? '1rem 0' : '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start', borderBottom: '1px solid #f1f5f9', minHeight: '60px' }}>
+          <Link href="/teacher" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '0.5rem', background: 'linear-gradient(135deg, #6d28d9, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '900', fontSize: '0.9rem', fontStyle: 'italic', flexShrink: 0 }}>
+              JO
+            </div>
+            {!collapsed && (
               <div>
                 <div style={{ fontSize: '0.6rem', fontWeight: '800', color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Teacher Panel</div>
                 <div style={{ fontSize: '1rem', fontWeight: '900', color: '#0f172a' }}>DSAT.JO</div>
               </div>
-            </div>
-          )}
-          <button onClick={() => setCollapsed(!collapsed)} style={{ width: '26px', height: '26px', borderRadius: '0.5rem', border: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}>
-            {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
-          </button>
+            )}
+          </Link>
         </div>
         <nav style={{ flex: 1, padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1px', overflowY: 'auto' }}>
           {teacherNav

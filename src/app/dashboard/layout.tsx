@@ -234,28 +234,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           padding: collapsed ? '1rem 0' : '1rem 1.25rem',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'space-between',
+          justifyContent: collapsed ? 'center' : 'flex-start',
           borderBottom: '1px solid #f1f5f9',
           flexShrink: 0,
           minHeight: '60px',
         }}>
-          {!collapsed && (
-            <Link href="/dashboard" style={{ fontSize: '1.25rem', fontWeight: '900', fontStyle: 'italic', color: '#0f172a', letterSpacing: '-0.5px', textDecoration: 'none' }}>
-              DSAT.JO
-            </Link>
-          )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            style={{
-              width: '26px', height: '26px', borderRadius: '0.5rem',
-              border: '1px solid #e2e8f0', background: '#f8fafc',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', color: '#64748b', flexShrink: 0,
-              transition: 'all 0.2s ease',
-            }}
-          >
-            {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
-          </button>
+          <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '0.5rem', background: 'linear-gradient(135deg, #0f172a, #334155)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: '900', fontSize: '0.9rem', fontStyle: 'italic', flexShrink: 0 }}>
+              JO
+            </div>
+            {!collapsed && (
+              <span style={{ fontSize: '1.25rem', fontWeight: '900', fontStyle: 'italic', color: '#0f172a', letterSpacing: '-0.5px' }}>
+                DSAT
+              </span>
+            )}
+          </Link>
         </div>
 
         {/* Scrollable nav */}
