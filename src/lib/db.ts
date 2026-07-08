@@ -753,12 +753,24 @@ export async function getTestBanks(userId?: string, role?: string, subject?: str
       const userData = userDoc.exists() ? userDoc.data() : {};
       const allowedTests = userData.allowedTests || [];
       const studentSubject = subject || userData.subject;
-      const visible = allTests.filter(t => 
-        t.isPublic || 
-        allowedTests.includes(t.id) || 
-        t.visibleTo === 'all' || 
-        (Array.isArray(t.visibleTo) && t.visibleTo.includes(userId))
-      );
+      const teacherIds = await getTeacherIdsForStudent(userId);
+
+      const visible = allTests.filter(t => {
+        if (!t.teacherId) {
+          return t.isPublic || 
+                 allowedTests.includes(t.id) || 
+                 t.visibleTo === 'all' || 
+                 (Array.isArray(t.visibleTo) && t.visibleTo.includes(userId));
+        }
+        
+        if (teacherIds.includes(t.teacherId)) {
+          return t.visibleTo === 'all' || 
+                 allowedTests.includes(t.id) || 
+                 (Array.isArray(t.visibleTo) && t.visibleTo.includes(userId));
+        }
+
+        return false;
+      });
       return filterItemsForStudent(visible, studentSubject);
     }
 
@@ -1270,11 +1282,20 @@ export async function getAllMiniQuizzes(): Promise<MiniQuiz[]> {
 
 export async function getStudentMiniQuizzes(userId: string, subject?: string): Promise<MiniQuiz[]> {
   const allQuizzes = await getAllMiniQuizzes();
+  const teacherIds = await getTeacherIdsForStudent(userId);
+
   return allQuizzes.filter(q => {
-    if (q.visibleTo && Array.isArray(q.visibleTo)) {
-      return q.visibleTo.includes(userId);
+    const isAdminQuiz = !q.teacherId || q.teacherId === 'admin';
+    const isMyTeacher = teacherIds.includes(q.teacherId);
+
+    if (isAdminQuiz || isMyTeacher) {
+      if (q.visibleTo && Array.isArray(q.visibleTo)) {
+        return q.visibleTo.includes(userId);
+      }
+      return q.isPublic || q.visibleTo === 'all';
     }
-    return q.isPublic || q.visibleTo === 'all';
+
+    return false;
   });
 }
 
