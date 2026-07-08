@@ -1081,7 +1081,7 @@ export default function TestPage() {
       }}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
           <div style={{ fontFamily: 'Georgia, serif', fontWeight: 'bold', color: '#1e293b', fontSize: '1.2rem' }}>
-            {isReviewMode ? 'Review Mode' : `Section ${isMath ? '2' : '1'}, Module ${moduleKey.includes('M1') ? '1' : '2'}: ${isMath ? 'Math' : 'Reading and Writing'}`}
+            {isReviewMode ? 'Review Mode' : (testData?.modulesConfig?.[moduleKey]?.name || `Section ${isMath ? '2' : '1'}, Module ${moduleKey.includes('M1') ? '1' : '2'}: ${isMath ? 'Math' : 'Reading and Writing'}`)}
           </div>
           <button
             onClick={() => setShowDirections(!showDirections)}
