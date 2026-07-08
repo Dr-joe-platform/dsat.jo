@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { PenTool, UploadCloud, Loader2, Sparkles, Database, Search, ArrowLeft, Check, Users, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';

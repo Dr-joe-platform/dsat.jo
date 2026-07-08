@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { Database, Plus, Trash2, Eye, Search, ChevronDown, ChevronUp, Edit, Loader2, X, FileText, UploadCloud } from 'lucide-react';
 import { getTestBanks, toggleTestPublicStatus, deleteTestBank, AdminTestBank, addActivityLog, createTestBank, updateTestBank } from '@/lib/db';
