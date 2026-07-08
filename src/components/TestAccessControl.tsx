@@ -231,7 +231,7 @@ export default function TestAccessControl({ tests, miniQuizzes = [], students, o
             </div>
             <div style={{ overflowY: 'auto' }}>
               {currentList.map(t => {
-                const isOwner = appUser?.uid === (t as any).teacherId || appUser?.uid === t.createdBy;
+                const isOwner = appUser?.uid === (t as any).teacherId || appUser?.uid === (t as any).createdBy;
                 const canDelete = appUser?.role === 'admin' || isOwner;
                 return (
                 <div key={t.id} onClick={() => setSelectedTestId(t.id!)}
