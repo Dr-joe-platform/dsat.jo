@@ -532,7 +532,7 @@ export default function CreateCompleteTestPage() {
                                               ))}
                                             </div>
                                           )}
-                                          <div>
+                                          <div style={{ whiteSpace: 'pre-wrap' }}>
                                             <Latex>{q.passage}</Latex>
                                           </div>
                                         </div>
@@ -540,7 +540,7 @@ export default function CreateCompleteTestPage() {
                                     </div>
                                   )}
                                   {!q.passageName && q.passage && (
-                                    <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}>
+                                    <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0', whiteSpace: 'pre-wrap' }}>
                                       <Latex>{q.passage}</Latex>
                                     </div>
                                   )}

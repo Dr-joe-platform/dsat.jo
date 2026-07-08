@@ -204,6 +204,7 @@ export default function TestPage() {
                 skill: q.skill || '',
                 text: cleanQuestion,
                 passage: q.passage || null,
+                passageName: q.passageName || null,
                 imageUrl: q.imageUrl || q.image || null,
                 question: cleanQuestion,
                 options: q.options && q.options.length > 0 ? q.options : undefined,
@@ -384,6 +385,12 @@ export default function TestPage() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, [phase]);
 
+  useEffect(() => {
+    if (phase === 'testing') {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  }, [phase]);
+
   // Anti-Cheat (Focus Mode)
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -457,7 +464,8 @@ export default function TestPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // get current module time
-  const currentModuleTime = testData?.modulesConfig?.[moduleKey]?.time ?? testData?.customTime ?? MODULE_TIME[moduleKey] ?? 35;
+  const baseModuleKey = moduleKey === 'M2H' || moduleKey === 'M2E' ? 'M2' : moduleKey === 'MATH_M2H' || moduleKey === 'MATH_M2E' ? 'MATH_M2' : moduleKey;
+  const currentModuleTime = testData?.modulesConfig?.[baseModuleKey]?.time ?? testData?.modulesConfig?.[moduleKey]?.time ?? testData?.customTime ?? MODULE_TIME[moduleKey] ?? 35;
 
   // reset timer when module changes, phase changes
   useEffect(() => {
@@ -1221,7 +1229,7 @@ export default function TestPage() {
                  <Latex delimiters={LATEX_DELIMITERS} strict={false}>{q.passageName}</Latex>
                </div>
              )}
-             <div style={{ padding: q.passageName ? '0 3rem 2rem' : '2rem 3rem' }}>
+             <div style={{ padding: q.passageName ? '0 3rem 2rem' : '2rem 3rem', whiteSpace: 'pre-wrap' }}>
                <AnnotatableText
                  text={q.passage}
                passageStartLine={q.passageStartLine}
