@@ -59,6 +59,11 @@ export interface TestResult {
   skills?: { skill: string; correct: boolean }[];
 }
 
+export interface TrialSettings {
+  allowedFeatures: string[]; // e.g. ['/dashboard', '/dashboard/practice', '/dashboard/settings', '/dashboard/upgrade']
+  allowedTests: string[]; // Array of AdminTestBank test IDs visible to pending users
+}
+
 // ─── Users ────────────────────────────────────────────────────────────────────
 
 /** Get all users (admin only) */
@@ -325,7 +330,34 @@ export async function getLeaderboard(limit_n = 20): Promise<LeaderboardEntry[]> 
   return entries;
 }
 
-// ─── Tests ────────────────────────────────────────────────────────────────────
+// ─── Trial Settings ─────────────────────────────────────────────────────────
+
+export interface TrialSettings {
+  allowedFeatures: string[];
+  allowedTests: string[];
+}
+
+export async function getTrialSettings(): Promise<TrialSettings> {
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'trialMode'));
+    if (snap.exists()) {
+      return snap.data() as TrialSettings;
+    }
+  } catch (error) {
+    console.error("Failed to fetch Trial Settings:", error);
+  }
+  // Fallback defaults
+  return {
+    allowedFeatures: ['/dashboard', '/dashboard/practice', '/dashboard/settings', '/dashboard/upgrade'],
+    allowedTests: [],
+  };
+}
+
+export async function setTrialSettings(settings: TrialSettings): Promise<void> {
+  await setDoc(doc(db, 'settings', 'trialMode'), settings);
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
 
 export interface FirestoreTest {
   id: string;
