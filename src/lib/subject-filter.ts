@@ -89,6 +89,7 @@ export function itemMatchesStudent(
   const student = normalizeStudentSubject(studentSubject);
   const item = normalizeSubject(itemSubject);
   if (!student || student === 'both') return true;
+  if (item === 'both' || item === 'general') return true;
   return item === student;
 }
 
