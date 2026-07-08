@@ -8,6 +8,7 @@ export interface DSATQuestion {
   module: number;
   text: string;
   passage?: string;
+  passageStartLine?: number;
   type: 'MC' | 'SPR';
   options?: string[];
   correctAnswer: string; // 'A'|'B'|'C'|'D' for MC, or numeric string for SPR

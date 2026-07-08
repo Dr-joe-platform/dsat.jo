@@ -97,9 +97,9 @@ export default function TestBankPage() {
           if (!res.success || !res.data) throw new Error(res.error || "Failed to parse PDF");
           finalData = res.data;
         } else {
-          finalData = await parseQuestionsCSV(file);
+          finalData = await parseQuestionsCSV(file, newTest.subject === 'English' ? 'M1' : undefined);
           if (file2) {
-             const data2 = await parseQuestionsCSV(file2);
+             const data2 = await parseQuestionsCSV(file2, newTest.subject === 'English' ? 'M2' : undefined);
              finalData = [...finalData, ...data2];
           }
         }

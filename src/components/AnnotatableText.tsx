@@ -28,9 +28,10 @@ interface AnnotatableTextProps {
   className?: string;
   style?: React.CSSProperties;
   disableLatex?: boolean;
+  passageStartLine?: number;
 }
 
-export default function AnnotatableText({ text, annotations, onAddAnnotation, onRemoveAnnotation, className, style, disableLatex = false }: AnnotatableTextProps) {
+export default function AnnotatableText({ text, annotations, onAddAnnotation, onRemoveAnnotation, className, style, disableLatex = false, passageStartLine }: AnnotatableTextProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { appUser } = useAuth();
   const [addingWord, setAddingWord] = useState(false);

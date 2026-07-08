@@ -136,6 +136,14 @@ export default function ResultsPage() {
           </div>
         </div>
 
+        {/* Review Button */}
+        <div style={{ marginBottom: '1.5rem' }}>
+           <Link href={`/test/${selected.testId}?review=true`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#6366f1', color: '#fff', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', fontWeight: '700', textDecoration: 'none', fontSize: '0.9rem', boxShadow: '0 4px 6px -1px rgba(99, 102, 241, 0.4)' }}>
+             <BookOpen size={18} />
+             Review Complete Exam
+           </Link>
+        </div>
+
         {/* Wrong answers */}
         {(selected.wrongQuestionIds || []).length > 0 && (
           <div className="stat-card">

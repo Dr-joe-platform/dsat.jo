@@ -44,7 +44,7 @@ export default function TestPage() {
   const [moduleKey, setModuleKey] = useState<keyof DSATModule>('M1');
   const [phase, setPhase] = useState<Phase>('intro');
   const [annotations, setAnnotations] = useState<Record<string, HighlightAnnotation[]>>({});
-  const isMath = testData?.subject === 'Math' || (testId as string).includes('MATH') || (!(testId as string).includes('ENG') && testData?.subject !== 'Reading & Writing');
+  const isMath = testData?.subject === 'Math' || (moduleKey || '').includes('MATH');
 
   useEffect(() => {
     const fetchTest = async () => {
@@ -1185,6 +1185,7 @@ export default function TestPage() {
           <div style={{ flex: 1, padding: '2rem 3rem', borderRight: '2px solid #e2e8f0', overflowY: 'auto', fontSize: fsz, lineHeight: lh, fontFamily: 'Georgia, serif', color: '#1e293b' }}>
              <AnnotatableText
                text={q.passage}
+               passageStartLine={q.passageStartLine}
                disableLatex={!isMath}
                annotations={annotations[annKey] || []}
                onAddAnnotation={(ann) => setAnnotations(prev => ({
