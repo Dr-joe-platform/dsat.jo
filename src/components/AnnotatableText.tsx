@@ -213,7 +213,7 @@ export default function AnnotatableText({ text, annotations, onAddAnnotation, on
             
             return (
               <div key={lineIdx} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                <div data-ignore-selection="true" style={{ width: '25px', textAlign: 'right', flexShrink: 0, color: '#94a3b8', fontSize: '0.8rem', userSelect: 'none', fontFamily: 'monospace', paddingTop: '2px' }}>
+                <div data-ignore-selection="true" style={{ width: '40px', textAlign: 'right', flexShrink: 0, color: '#94a3b8', fontSize: '0.8rem', userSelect: 'none', fontFamily: 'monospace', paddingTop: '2px' }}>
                   {showNum ? lineNum : ''}
                 </div>
                 <div style={{ flex: 1, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
