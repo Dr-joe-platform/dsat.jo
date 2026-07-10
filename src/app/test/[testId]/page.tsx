@@ -759,7 +759,7 @@ export default function TestPage() {
     const totalQuestions = (testData.M1?.length || 0) + rwModule2Length + (testData.MATH_M1?.length || 0) + mathModule2Length;
     const timeLimitStr = testData.customTime ? testData.customTime + ' mins' : (testData.isFull ? '134 mins' : 'Standard');
     return (
-      <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+      <div style={{ minHeight: '100dvh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
         <div style={{ maxWidth: '720px', width: '100%', background: '#fff', borderRadius: '1.5rem', padding: '3rem', boxShadow: '0 20px 60px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: '1px solid #f1f5f9' }}>
             <div style={{ width: '56px', height: '56px', background: 'linear-gradient(135deg, #1d4ed8, #4f46e5)', borderRadius: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -800,7 +800,7 @@ export default function TestPage() {
 
   if (phase === 'break') {
     return (
-      <div style={{ minHeight: '100vh', background: '#0a1128', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', fontFamily: 'Georgia, serif' }}>
+      <div style={{ minHeight: '100dvh', background: '#0a1128', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', fontFamily: 'Georgia, serif' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: '400', marginBottom: '1.5rem' }}>Take a moment to relax</h1>
         <div style={{ fontSize: '5rem', fontWeight: '400', marginBottom: '2rem', fontVariantNumeric: 'tabular-nums' }}>
           {formatTime(timeLeft)}
@@ -889,7 +889,7 @@ export default function TestPage() {
     const unansweredCount = questionList.length - answeredCount;
 
     return (
-      <div style={{ minHeight: '100vh', background: '#f1f5f9', fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ minHeight: '100dvh', background: '#f1f5f9', fontFamily: 'sans-serif', display: 'flex', flexDirection: 'column' }}>
         
         {/* Header */}
         <div style={{ background: '#2e3b84', color: '#fff', padding: '1.5rem 3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1112,7 +1112,7 @@ export default function TestPage() {
     });
   };
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f8f9fa', fontFamily: '"Georgia", "Times New Roman", serif', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#f8f9fa', fontFamily: '"Georgia", "Times New Roman", serif', overflow: 'hidden' }}>
 
       {/* ── HEADER ── */}
       <header className="test-header-content" style={{

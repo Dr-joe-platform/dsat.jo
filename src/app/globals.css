@@ -493,7 +493,7 @@ input, textarea, select {
   border-right: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
   position: sticky;
   top: 0;
 }
@@ -1120,7 +1120,7 @@ input, textarea, select {
     left: 0;
     top: 0;
     bottom: 0;
-    height: 100vh !important;
+    height: 100dvh !important;
     z-index: 9999 !important;
     transform: translateX(-100%);
     transition: transform 0.3s ease-in-out !important;
@@ -1190,7 +1190,7 @@ input, textarea, select {
   .test-passage-panel {
     border-right: none !important;
     border-bottom: 2px solid #e2e8f0 !important;
-    max-height: 50vh !important;
+    max-height: 50dvh !important;
     overflow-y: auto !important;
   }
   .test-passage-content {
