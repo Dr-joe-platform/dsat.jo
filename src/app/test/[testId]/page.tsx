@@ -409,6 +409,18 @@ export default function TestPage() {
     };
   }, [phase]);
 
+  // Prevent accidental navigation
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (phase === 'testing' || phase === 'break') {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [phase]);
+
   // Auto-Save Effect
   useEffect(() => {
     if (phase !== 'testing' && phase !== 'break') return;
@@ -1293,7 +1305,7 @@ export default function TestPage() {
                 </div>
                 {hasImage && (
                   <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
-                    <img src={q.imageUrl || undefined} alt="Question figure" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
+                    <img src={q.imageUrl || undefined} alt="Question figure" loading="lazy" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }} />
                   </div>
                 )}
               </div>
@@ -1344,7 +1356,7 @@ export default function TestPage() {
                       </div>
                       <div style={{ flex: 1, fontSize: fsz, lineHeight: lh, position: 'relative', fontFamily: 'Georgia, serif' }}>
                         {(opt.trim().startsWith('http') && !opt.trim().includes(' ')) ? (
-                          <img src={opt.trim()} alt="Option image" style={{ maxWidth: '100%', maxHeight: '200px', display: 'block', borderRadius: '4px', objectFit: 'contain' }} />
+                          <img src={opt.trim()} alt="Option image" loading="lazy" style={{ maxWidth: '100%', maxHeight: '200px', display: 'block', borderRadius: '4px', objectFit: 'contain' }} />
                         ) : opt.includes('<table') ? (
                           <div dangerouslySetInnerHTML={{ __html: opt.replace(/\$([^$]+)\$/g, (m, math) => {
                             try {
