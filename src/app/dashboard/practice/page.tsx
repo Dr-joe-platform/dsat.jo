@@ -278,8 +278,8 @@ export default function PracticePage() {
       {/* Tests lists */}
       <div>
         {renderTestCategory('Complete Mock Tests', completeTests)}
-        {(!appUser?.subject || appUser?.subject === 'math' || appUser?.subject === 'both') && renderTestCategory('Math Mock Tests', mathTests)}
-        {(!appUser?.subject || appUser?.subject === 'english' || appUser?.subject === 'both') && renderTestCategory('English Mock Tests', englishTests)}
+        {renderTestCategory('Math Mock Tests', mathTests)}
+        {renderTestCategory('English Mock Tests', englishTests)}
         
         {/* Dynamically Loaded Teacher Tests */}
         {teacherTests.length > 0 && (

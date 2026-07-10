@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { getTeacherClasses, getConversations, getOrCreateConversation, subscribeToMessages, sendMessage, markConversationRead, ChatMessage, Conversation, getUsersByIds } from '@/lib/db';
+import { getTeacherClasses, getConversations, getOrCreateConversation, subscribeToMessages, sendMessage, markConversationRead, ChatMessage, Conversation, getUsersByIds, getTeacherStudents } from '@/lib/db';
 import { Send, User as UserIcon, MessageCircle } from 'lucide-react';
 
 export default function TeacherMessagesPage() {
@@ -22,22 +22,17 @@ export default function TeacherMessagesPage() {
     // Load contacts (Admin + All Students in their classes)
     const loadContacts = async () => {
       try {
-        const classes = await getTeacherClasses(appUser.uid);
-        const studentIds = new Set<string>();
-        classes.forEach(c => {
-          (c.studentIds || []).forEach(id => studentIds.add(id));
-        });
-        
-        const students = await getUsersByIds(Array.from(studentIds));
-        const studentsMap = new Map();
-        students.forEach(s => {
-          studentsMap.set(s.uid, { id: s.uid, name: s.displayName || s.email?.split('@')[0] || 'Student', role: 'student' });
-        });
+        const students = await getTeacherStudents(appUser!.uid, appUser!.teacherSubject);
         
         const contactList = [
           { id: 'admin', name: 'Platform Admin', role: 'admin' },
-          ...Array.from(studentsMap.values())
+          ...students.map(s => ({
+            id: s.uid,
+            name: s.displayName || s.email?.split('@')[0] || 'Student',
+            role: 'student'
+          }))
         ];
+        
         setContacts(contactList);
       } catch (err) {
         console.error(err);

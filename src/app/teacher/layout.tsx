@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { BarChart2, PenTool, Calendar, Lock, Zap, Settings, LogOut, Library, ChevronLeft, ChevronRight, Users, BookA, Target, FileText, LayoutDashboard, BrainCircuit, MessageCircle, Database } from 'lucide-react';
+import { BarChart2, PenTool, Calendar, Lock, Zap, Settings, LogOut, Library, ChevronLeft, ChevronRight, Users, BookA, Target, FileText, LayoutDashboard, BrainCircuit, MessageCircle, Database, Home } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
 const teacherNav = [
@@ -30,6 +30,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   const router = useRouter();
   const { appUser, loading, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const teacherSubject = appUser?.teacherSubject || 'Both';
 
   useEffect(() => {
@@ -44,7 +45,10 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-      <aside style={{
+      
+      <div className={`sidebar-overlay ${mobileMenuOpen ? 'open' : ''}`} onClick={() => setMobileMenuOpen(false)} />
+
+      <aside className={`desktop-sidebar no-print ${mobileMenuOpen ? 'mobile-open' : ''}`} style={{
         width: collapsed ? '68px' : '240px',
         backgroundColor: '#ffffff',
         borderRight: '1px solid #e8ecf0',
@@ -76,7 +80,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
             .map(item => {
             const active = isActive(item.href);
             return (
-              <Link key={item.href} href={item.href} title={collapsed ? item.label : undefined} style={{ display: 'flex', alignItems: 'center', gap: collapsed ? '0' : '0.625rem', padding: collapsed ? '0.5rem' : '0.5rem 0.75rem', borderRadius: '0.5rem', backgroundColor: active ? '#0f172a' : 'transparent', color: active ? '#ffffff' : '#475569', fontWeight: active ? '600' : '500', fontSize: '0.825rem', textDecoration: 'none', transition: 'all 0.15s', justifyContent: collapsed ? 'center' : 'flex-start', minHeight: '34px' }}
+              <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} title={collapsed ? item.label : undefined} style={{ display: 'flex', alignItems: 'center', gap: collapsed ? '0' : '0.625rem', padding: collapsed ? '0.5rem' : '0.5rem 0.75rem', borderRadius: '0.5rem', backgroundColor: active ? '#0f172a' : 'transparent', color: active ? '#ffffff' : '#475569', fontWeight: active ? '600' : '500', fontSize: '0.825rem', textDecoration: 'none', transition: 'all 0.15s', justifyContent: collapsed ? 'center' : 'flex-start', minHeight: '34px' }}
                 onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.backgroundColor = '#f8fafc'; (e.currentTarget as HTMLElement).style.color = '#0f172a'; } }}
                 onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#475569'; } }}
               >
@@ -94,8 +98,25 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
         </div>
       </aside>
 
-      <main style={{ flex: 1, padding: '2rem', minWidth: 0 }}>
-        {children}
+      <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        {/* Top bar with hamburger menu for mobile */}
+        <div className="top-nav no-print" style={{ height: '52px', borderBottom: '1px solid #f1f5f9', background: '#fff', display: 'flex', alignItems: 'center', padding: '0 1.5rem', flexShrink: 0 }}>
+          <button 
+            className="mobile-menu-btn"
+            onClick={() => setMobileMenuOpen(true)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0f172a', padding: '0.5rem', marginLeft: '-0.5rem' }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ width: '20px', height: '2px', background: 'currentColor', borderRadius: '2px' }} />
+              <div style={{ width: '20px', height: '2px', background: 'currentColor', borderRadius: '2px' }} />
+              <div style={{ width: '20px', height: '2px', background: 'currentColor', borderRadius: '2px' }} />
+            </div>
+          </button>
+        </div>
+
+        <div style={{ flex: 1, padding: '2rem', minWidth: 0, overflowX: 'auto', overflowY: 'auto' }}>
+          {children}
+        </div>
       </main>
     </div>
   );

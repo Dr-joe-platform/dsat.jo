@@ -413,6 +413,12 @@ export async function getStudentAssignments(studentId: string): Promise<Assignme
 
 // ─── E-Books ─────────────────────────────────────────────────────────────────
 
+export interface EbookSettings {
+  allowDownload: boolean;
+  saveProgress: boolean;
+  allowAnnotations: boolean;
+}
+
 export interface Ebook {
   id: string;
   title: string;
@@ -425,6 +431,9 @@ export interface Ebook {
   coverColor?: string;
   coverEmoji?: string;
   teacherId?: string;
+  downloadUrl?: string;
+  settings?: EbookSettings;
+  classIds?: string[];
 }
 
 export async function getEbooks(userId?: string, role?: string, subject?: string): Promise<Ebook[]> {
@@ -441,15 +450,27 @@ export async function getEbooks(userId?: string, role?: string, subject?: string
   }
 
   if (role === 'student' && userId) {
-    const teacherIds = await getTeacherIdsForStudent(userId);
+    const studentClasses = await getStudentClasses(userId);
+    const studentClassIds = studentClasses.map(c => c.id);
+    
     const userDoc = await getDoc(doc(db, 'users', userId));
     const studentSubject = subject || (userDoc.exists() ? userDoc.data().subject : undefined);
     
-    const visible = allEbooks.filter(b => !b.teacherId || teacherIds.includes(b.teacherId));
+    const visible = allEbooks.filter(b => {
+      if (b.teacherId === 'admin_global' || !b.teacherId) return true; // Global books
+      // If book has assigned classes, check if student is in any of them
+      if (b.classIds && b.classIds.length > 0) {
+        return b.classIds.some(id => studentClassIds.includes(id));
+      }
+      // If book has NO assigned classes, fallback to checking if student is taught by the teacher
+      const teacherIds = studentClasses.map(c => c.teacherId).filter(Boolean);
+      return teacherIds.includes(b.teacherId);
+    });
+    
     return filterItemsForStudent(visible, studentSubject);
   }
 
-  return allEbooks.filter(b => !b.teacherId);
+  return allEbooks.filter(b => b.teacherId === 'admin_global' || !b.teacherId);
 }
 
 // ─── Notifications ───────────────────────────────────────────────────────────
@@ -457,7 +478,7 @@ export async function getEbooks(userId?: string, role?: string, subject?: string
 export interface Notification {
   id: string;
   userId: string;
-  type: 'test_assigned' | 'account_approved' | 'test_completed' | 'new_test' | 'streak' | 'milestone' | 'system';
+  type: 'test_assigned' | 'account_approved' | 'test_completed' | 'new_test' | 'streak' | 'milestone' | 'system' | 'ebook_assigned';
   title: string;
   message: string;
   isRead: boolean;
@@ -473,8 +494,22 @@ export async function getNotifications(userId: string, max = 30): Promise<Notifi
   );
   const snap = await getDocs(q);
   const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Notification));
+  
+  const now = Date.now() / 1000;
+  const freshDocs = docs.filter(d => (now - (d.createdAt?.seconds ?? 0)) <= 24 * 3600);
+  const oldDocs = docs.filter(d => (now - (d.createdAt?.seconds ?? 0)) > 24 * 3600);
+  
+  if (oldDocs.length > 0) {
+    // Fire and forget delete
+    import('firebase/firestore').then(({ deleteDoc, doc }) => {
+      oldDocs.forEach(d => {
+        deleteDoc(doc(db, 'notifications', d.id)).catch(e => console.error(e));
+      });
+    });
+  }
+
   // Sort client-side to avoid needing a composite index
-  return docs.sort((a, b) => {
+  return freshDocs.sort((a, b) => {
     const aTime = a.createdAt?.seconds ?? 0;
     const bTime = b.createdAt?.seconds ?? 0;
     return bTime - aTime;
@@ -489,8 +524,22 @@ export function subscribeNotifications(userId: string, cb: (n: Notification[]) =
   );
   return onSnapshot(q, snap => {
     const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Notification));
+    
+    const now = Date.now() / 1000;
+    const freshDocs = docs.filter(d => (now - (d.createdAt?.seconds ?? 0)) <= 24 * 3600);
+    const oldDocs = docs.filter(d => (now - (d.createdAt?.seconds ?? 0)) > 24 * 3600);
+    
+    if (oldDocs.length > 0) {
+      // Fire and forget delete
+      import('firebase/firestore').then(({ deleteDoc, doc }) => {
+        oldDocs.forEach(d => {
+          deleteDoc(doc(db, 'notifications', d.id)).catch(e => console.error(e));
+        });
+      });
+    }
+
     // Sort client-side to avoid needing a composite index
-    const sorted = docs.sort((a, b) => {
+    const sorted = freshDocs.sort((a, b) => {
       const aTime = a.createdAt?.seconds ?? 0;
       const bTime = b.createdAt?.seconds ?? 0;
       return bTime - aTime;
@@ -548,6 +597,47 @@ export async function notifyStudentsForNewTest(testName: string, visibleTo: stri
         link: '/dashboard/practice',
       });
     }
+  }
+}
+
+export async function notifyStudentsForNewEbook(bookTitle: string, visibleTo: string[] | 'all', assignerName: string = 'Admin', isClassIds = false) {
+  if (!visibleTo || (Array.isArray(visibleTo) && visibleTo.length === 0)) return;
+
+  const title = '📚 New E-Book Available';
+  const message = `${assignerName} added a new E-Book for you: ${bookTitle}.`;
+  
+  let targetUids: string[] = [];
+
+  if (visibleTo === 'all') {
+    const allUsers = await getAllUsers();
+    targetUids = allUsers.filter(u => u.role === 'student' || (u.role as string) === 'trial').map(u => u.uid);
+  } else if (isClassIds) {
+    // visibleTo contains class IDs
+    for (const classId of visibleTo) {
+      const classDoc = await getDoc(doc(db, 'classes', classId));
+      if (classDoc.exists()) {
+        const cData = classDoc.data();
+        if (cData.studentIds) {
+          targetUids.push(...cData.studentIds);
+        }
+      }
+    }
+  } else {
+    targetUids = visibleTo;
+  }
+
+  // Remove duplicates
+  targetUids = Array.from(new Set(targetUids));
+
+  for (const uid of targetUids) {
+    await addNotification({
+      userId: uid,
+      type: 'ebook_assigned',
+      title,
+      message,
+      isRead: false,
+      link: '/dashboard/ebooks',
+    });
   }
 }
 
@@ -729,6 +819,7 @@ export interface AdminTestBank {
   visibleTo?: 'all' | string[];
   isMiniQuiz?: boolean;
   customTime?: number;
+  allowedPlans?: string[];
   modulesConfig?: {
     M1?: { time: number, questions: number, name?: string },
     M2?: { time: number, questions: number, name?: string },
@@ -1072,6 +1163,8 @@ export interface StudyPlan {
   teacherId: string;
   studentId: string;
   title: string;
+  description?: string;
+  items?: { title: string; description?: string; link?: string }[];
   tasks: { id: string; title: string; completed: boolean }[];
   createdAt: any;
 }

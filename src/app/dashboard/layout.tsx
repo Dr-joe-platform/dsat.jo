@@ -14,6 +14,8 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { useNotifications } from '@/lib/hooks/useNotifications';
 import { getUserStats, getUsersByTeacherCode, getFeatureControls, getTrialSettings, TrialSettings } from '@/lib/db';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import TextSelectionTooltip from '@/components/TextSelectionTooltip';
 import GlobalVocabWidget from '@/components/GlobalVocabWidget';
 
@@ -75,11 +77,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const { appUser, loading, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [showNotifs, setShowNotifs] = useState(false);
   const [streak, setStreak] = useState(0);
   const [disabledFeatures, setDisabledFeatures] = useState<string[]>([]);
   const [trialSettings, setTrialSettings] = useState<TrialSettings | null>(null);
+  const [allowedModules, setAllowedModules] = useState<string[] | null>(null);
   const notifsRef = useRef<HTMLDivElement>(null);
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
 
@@ -131,6 +135,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [appUser?.status]);
 
+  // Load Plan Features
+  useEffect(() => {
+    if (!appUser?.planId) {
+      setAllowedModules(null);
+      return;
+    }
+    const fetchPlan = async () => {
+      try {
+        const docRef = doc(db, 'pricing', appUser.planId!);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setAllowedModules(docSnap.data().allowedModules || null);
+        } else {
+          setAllowedModules(null);
+        }
+      } catch (err) {
+        console.error("Failed to load plan features", err);
+      }
+    };
+    fetchPlan();
+  }, [appUser?.planId]);
+
   // Close notif panel on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -165,7 +191,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     // 1. Check if teacher explicitly disabled it
     if (disabledFeatures.includes(href)) return 'teacher_locked';
     
-    // 2. Check trial mode locking
+    // 2. Check if admin restricted it via Pricing Plan
+    if (allowedModules) {
+      // Allow essentials
+      if (['/dashboard', '/dashboard/settings', '/dashboard/upgrade', '/dashboard/support'].includes(href)) return false;
+      // If we have allowed modules defined on the plan, and this href is not among them
+      // we only lock if it's one of the main modules that can be restricted
+      const restrictedPrefixes = ['/dashboard/practice', '/dashboard/ebooks', '/dashboard/mini-quizzes', '/dashboard/analytics', '/dashboard/study-plan', '/dashboard/flashcards', '/dashboard/vocabulary', '/dashboard/notes', '/dashboard/messages'];
+      const isRestrictedModule = restrictedPrefixes.some(prefix => href.startsWith(prefix));
+      if (isRestrictedModule) {
+        const isAllowed = allowedModules.some(allowed => href.startsWith(allowed));
+        if (!isAllowed) return 'plan_locked';
+      }
+    }
+
+    // 3. Check trial mode locking
     if (appUser?.status === 'pending') {
       if (href.startsWith('/dashboard/checkout')) return false;
       // Allow specific routes that are essential (home, settings, upgrade, support)
@@ -186,10 +226,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const locked = isFeatureLocked(href);
     if (locked === 'teacher_locked') return 'Disabled by your teacher';
     if (locked === 'trial_locked') return 'Locked in Trial Mode';
+    if (locked === 'plan_locked') return 'Not included in your current plan';
     return null;
   };
 
-  // ── Locked UI ──
+  // 🔒 Locked UI 🔒
   const LockedUI = () => (
     <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', padding: '2rem' }}>
       <div style={{ maxWidth: '400px', textAlign: 'center', background: '#fff', padding: '3rem 2rem', borderRadius: '1.5rem', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
@@ -200,6 +241,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '2rem' }}>
           {isFeatureLocked(pathname) === 'teacher_locked' 
             ? 'This feature has been temporarily disabled by your teacher for your class.'
+            : isFeatureLocked(pathname) === 'plan_locked'
+            ? 'This feature is not included in your current subscription plan.'
             : 'Your account is currently in Trial Mode pending teacher approval. You have limited access to features.'}
         </p>
         <Link href="/dashboard" style={{ display: 'inline-flex', padding: '0.75rem 1.5rem', background: '#0f172a', color: '#fff', borderRadius: '0.75rem', fontWeight: '700', fontSize: '0.9rem', textDecoration: 'none' }}>
@@ -213,8 +256,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <TextSelectionTooltip />
       <GlobalVocabWidget />
+
+      <div className={`sidebar-overlay ${mobileMenuOpen ? 'open' : ''}`} onClick={() => setMobileMenuOpen(false)} />
+
       {/* ── SIDEBAR ── */}
-      <aside className="sidebar no-print" style={{
+      <aside className={`sidebar no-print desktop-sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`} style={{
         width: collapsed ? '68px' : '256px',
         backgroundColor: '#ffffff',
         borderRight: '1px solid #e8ecf0',
@@ -283,6 +329,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       <Link
                         key={item.href}
                         href={locked ? '#' : item.href}
+                        onClick={() => { if (!locked) setMobileMenuOpen(false); }}
                         title={collapsed ? (lockedReason || item.label) : lockedReason || undefined}
                         style={{
                           display: 'flex', alignItems: 'center',
@@ -430,10 +477,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* ── MAIN CONTENT ── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
         {/* Top bar with notification bell */}
-        <div className="top-nav no-print" style={{ height: '52px', borderBottom: '1px solid #f1f5f9', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 1.5rem', flexShrink: 0, gap: '0.625rem', position: 'relative', zIndex: 40 }}>
-          {/* Notification bell */}
+        <div className="top-nav no-print" style={{ height: '52px', borderBottom: '1px solid #f1f5f9', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1.5rem', flexShrink: 0, position: 'relative', zIndex: 40 }}>
+          
+          {/* Hamburger Menu (Mobile Only) */}
+          <button 
+            className="mobile-menu-btn"
+            onClick={() => setMobileMenuOpen(true)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0f172a', padding: '0.5rem', marginLeft: '-0.5rem' }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ width: '20px', height: '2px', background: 'currentColor', borderRadius: '2px' }} />
+              <div style={{ width: '20px', height: '2px', background: 'currentColor', borderRadius: '2px' }} />
+              <div style={{ width: '20px', height: '2px', background: 'currentColor', borderRadius: '2px' }} />
+            </div>
+          </button>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginLeft: 'auto' }}>
+            {/* Notification bell */}
           <div ref={notifsRef} style={{ position: 'relative' }}>
             <button
               onClick={() => setShowNotifs(!showNotifs)}
@@ -498,6 +560,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ) : (
               (appUser.displayName || 'S')[0].toUpperCase()
             )}
+          </div>
           </div>
         </div>
 

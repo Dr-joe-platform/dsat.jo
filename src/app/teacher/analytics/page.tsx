@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { getTeacherClasses, ClassModel, getUsersByIds, AppUser, getUserResults, TestResult, computeWeakPoints, WeakPoint, getAllResults } from '@/lib/db';
+import { getTeacherClasses, ClassModel, getUsersByIds, AppUser, getUserResults, TestResult, computeWeakPoints, WeakPoint, getAllResults, getTeacherStudents } from '@/lib/db';
 import { filterStudentsBySubject, filterResultsBySubject } from '@/lib/subject-filter';
 import { Target, TrendingUp, AlertTriangle, User, Flame, Search, ChevronRight, Download, MessageCircle, Phone, ArrowLeft, CheckCircle, XCircle, Printer } from 'lucide-react';
 
@@ -30,14 +30,25 @@ export default function TeacherAnalyticsPage() {
       const cls = await getTeacherClasses(appUser!.uid);
       setClasses(cls);
       
-      const allStudentIds = Array.from(new Set(cls.flatMap(c => c.studentIds || [])));
-      const stds = await getUsersByIds(allStudentIds);
-      setStudents(filterStudentsBySubject(stds, appUser!.teacherSubject));
+      const stds = await getTeacherStudents(appUser!.uid, appUser!.teacherSubject);
+      setStudents(stds);
     } catch (err) {
       console.error(err);
     }
     setLoading(false);
   };
+
+  const filteredStudents = students.filter(s => {
+    if (selectedClass !== 'all') {
+      const cls = classes.find(c => c.id === selectedClass);
+      if (!cls || !cls.studentIds?.includes(s.uid)) return false;
+    }
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      if (!s.displayName?.toLowerCase().includes(q) && !s.email?.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
 
   const handleStudentClick = async (student: AppUser) => {
     setSelectedStudent(student);
@@ -98,18 +109,6 @@ export default function TeacherAnalyticsPage() {
     const cleanPhone = phone.replace(/\D/g, '');
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text || 'Hello!')}`;
   };
-
-  const filteredStudents = students.filter(s => {
-    if (selectedClass !== 'all') {
-      const cls = classes.find(c => c.id === selectedClass);
-      if (!cls || !cls.studentIds?.includes(s.uid)) return false;
-    }
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
-      if (!s.displayName?.toLowerCase().includes(q) && !s.email?.toLowerCase().includes(q)) return false;
-    }
-    return true;
-  });
 
   if (selectedStudent) {
     // ─── DRILL DOWN VIEW ──────────────────────────────────────────────────────────

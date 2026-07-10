@@ -26,11 +26,34 @@ export default function StudentMessagesPage() {
       try {
         const classes = await getStudentClasses(appUser.uid);
         const teachersMap = new Map();
+        
+        // Teachers from classes
         classes.forEach(c => {
-          if (!teachersMap.has(c.teacherId)) {
+          if (c.teacherId && !teachersMap.has(c.teacherId)) {
             teachersMap.set(c.teacherId, { id: c.teacherId, name: c.teacherName || 'Teacher', role: 'teacher' });
           }
         });
+        
+        // Teachers from codes
+        const codes = [appUser.teacherCode, ...(appUser.teacherCodes || [])]
+          .filter(Boolean)
+          .map(c => c!.toLowerCase().trim());
+
+        if (codes.length > 0) {
+          const { getAllUsers } = await import('@/lib/db');
+          const allUsers = await getAllUsers();
+          const codeTeachers = allUsers.filter(u => 
+            u.role === 'teacher' && 
+            u.teacherCode && 
+            codes.includes(u.teacherCode.toLowerCase().trim())
+          );
+          
+          codeTeachers.forEach(t => {
+            if (!teachersMap.has(t.uid)) {
+              teachersMap.set(t.uid, { id: t.uid, name: t.displayName || 'Teacher', role: 'teacher' });
+            }
+          });
+        }
         
         const contactList = [
           { id: 'admin', name: 'Platform Admin', role: 'admin' },

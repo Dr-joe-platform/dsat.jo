@@ -16,6 +16,8 @@ interface ParsedQuestion {
   id: string;
   type: 'MCQ' | 'SPR';
   passage?: string;
+  passageName?: string;
+  passageStartLine?: number;
   question: string;
   options: string[];
   correctAnswer: string;
@@ -153,11 +155,11 @@ export default function CreateTestPage() {
         setTestName(csvFile1.name.replace('.csv', '') + ' Quiz');
       } else {
         if (!csvFile1) throw new Error("Please select at least Module 1 CSV.");
-        const res1 = await parseQuestionsCSV(csvFile1, "Module 1");
+        const res1 = await parseQuestionsCSV(csvFile1, "M1");
         let merged = [...res1];
         
         if (csvFile2) {
-          const res2 = await parseQuestionsCSV(csvFile2, "Module 2");
+          const res2 = await parseQuestionsCSV(csvFile2, "M2");
           merged = [...merged, ...res2];
         }
         
@@ -449,8 +451,27 @@ export default function CreateTestPage() {
                   )}
                   {isPreview ? (
                     <div style={{ padding: '1rem', background: '#fff', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.95rem', lineHeight: '1.6', color: '#1e293b' }}>
-                      {q.passage && appUser?.teacherSubject !== 'Math' && (
+                      {q.passageName && appUser?.teacherSubject !== 'Math' && (
                         <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}>
+                          <h4 style={{ margin: '0 0 0.5rem 0', color: '#1e293b' }}>{q.passageName}</h4>
+                          {q.passage && (
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                              {q.passageStartLine !== undefined && (
+                                <div style={{ color: '#94a3b8', fontSize: '0.8rem', userSelect: 'none' }}>
+                                  {q.passage.split('\n').map((_: string, i: number) => (
+                                    <div key={i}>{(q.passageStartLine! + i) % 5 === 0 ? q.passageStartLine! + i : '\u00A0'}</div>
+                                  ))}
+                                </div>
+                              )}
+                              <div style={{ whiteSpace: 'pre-wrap' }}>
+                                <Latex>{q.passage}</Latex>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {!q.passageName && q.passage && appUser?.teacherSubject !== 'Math' && (
+                        <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0', whiteSpace: 'pre-wrap' }}>
                           <Latex>{q.passage}</Latex>
                         </div>
                       )}
@@ -486,16 +507,43 @@ export default function CreateTestPage() {
                   ) : (
                     <>
                       {appUser?.teacherSubject !== 'Math' && (
-                        <textarea
-                          value={q.passage || ''}
-                          onChange={(e) => {
-                            const newQs = [...generatedQuestions];
-                            newQs[idx].passage = e.target.value;
-                            setGeneratedQuestions(newQs);
-                          }}
-                          style={{ width: '100%', background: '#fff', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem', fontSize: '0.9rem', color: '#334155', border: '1px solid #94a3b8', minHeight: '80px', resize: 'vertical' }}
-                          placeholder="Passage (optional). Use $math$ for inline LaTeX and $$math$$ for block."
-                        />
+                        <>
+                          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                            <input
+                              type="text"
+                              value={q.passageName || ''}
+                              onChange={(e) => {
+                                const newQs = [...generatedQuestions];
+                                newQs[idx].passageName = e.target.value;
+                                setGeneratedQuestions(newQs);
+                              }}
+                              style={{ flex: 1, background: '#fff', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '0.9rem', color: '#334155', border: '1px solid #cbd5e1' }}
+                              placeholder="Passage Name (Optional - e.g., 'The Everyday Life of Abraham Lincoln')"
+                            />
+                            <input
+                              type="number"
+                              value={q.passageStartLine === undefined ? '' : q.passageStartLine}
+                              onChange={(e) => {
+                                const newQs = [...generatedQuestions];
+                                newQs[idx].passageStartLine = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                                setGeneratedQuestions(newQs);
+                              }}
+                              style={{ width: '150px', background: '#fff', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '0.9rem', color: '#334155', border: '1px solid #cbd5e1' }}
+                              placeholder="Start Line (e.g., 1)"
+                            />
+                          </div>
+
+                          <textarea
+                            value={q.passage || ''}
+                            onChange={(e) => {
+                              const newQs = [...generatedQuestions];
+                              newQs[idx].passage = e.target.value;
+                              setGeneratedQuestions(newQs);
+                            }}
+                            style={{ width: '100%', background: '#fff', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem', fontSize: '0.9rem', color: '#334155', border: '1px solid #94a3b8', minHeight: '80px', resize: 'vertical' }}
+                            placeholder="Passage (optional). Use $math$ for inline LaTeX and $$math$$ for block."
+                          />
+                        </>
                       )}
                       
                       <textarea

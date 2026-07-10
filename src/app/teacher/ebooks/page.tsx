@@ -1,20 +1,20 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Library, Upload, Trash2, Download, Eye, Plus, X, Loader2, FileText } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { storage } from '@/lib/firebase';
-import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
-import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { getTeacherClasses, ClassModel, EbookSettings, notifyStudentsForNewEbook } from '@/lib/db';
 import ImageUploader from '@/components/ImageUploader';
+import PdfViewer from '@/components/PdfViewer';
 
 interface Ebook {
   id: string;
   title: string;
   author: string;
   subject: string;
-  pages: number;
+  link: string;
   size: string;
   emoji: string;
   uploadedAt: string;
@@ -22,6 +22,8 @@ interface Ebook {
   storagePath?: string;
   teacherId: string;
   coverUrl?: string;
+  settings?: EbookSettings;
+  classIds?: string[];
 }
 
 export default function TeacherEbooksPage() {
@@ -30,13 +32,18 @@ export default function TeacherEbooksPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [form, setForm] = useState({ title: '', author: '', subject: 'Math', emoji: '📚', pages: '', coverUrl: '' });
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [viewingPdf, setViewingPdf] = useState<Ebook | null>(null);
+  const [editingSettings, setEditingSettings] = useState<Ebook | null>(null);
+  const [editSelectedClasses, setEditSelectedClasses] = useState<string[]>([]);
+  const [form, setForm] = useState({ title: '', author: '', subject: 'Math', emoji: '📚', link: '', coverUrl: '', allowDownload: false, saveProgress: true, allowAnnotations: true });
+  const [teacherClasses, setTeacherClasses] = useState<ClassModel[]>([]);
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
 
   useEffect(() => {
-    if (appUser?.uid) loadBooks();
+    if (appUser?.uid) {
+      loadBooks();
+      getTeacherClasses(appUser.uid).then(setTeacherClasses).catch(console.error);
+    }
   }, [appUser]);
 
   const loadBooks = async () => {
@@ -61,78 +68,70 @@ export default function TeacherEbooksPage() {
     setLoading(false);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (f) setSelectedFile(f);
-  };
-
   const addBook = async () => {
     if (!form.title.trim()) return alert('Please enter a title');
-    if (!selectedFile) return alert('Please select a PDF file to upload');
+    if (!form.link.trim()) return alert('Please enter a link');
 
     setUploading(true);
-    setUploadProgress(0);
 
     try {
-      // 1. Upload PDF to Firebase Storage
-      const path = `ebooks/${appUser!.uid}/${Date.now()}_${selectedFile.name}`;
-      const sRef = storageRef(storage, path);
-      const uploadTask = uploadBytesResumable(sRef, selectedFile);
+      let downloadUrl = form.link.trim();
+      if (downloadUrl.includes('drive.google.com/file/d/')) {
+        downloadUrl = downloadUrl.replace(/\/view.*$/, '/preview');
+      } else if (downloadUrl.includes('dropbox.com/')) {
+        downloadUrl = downloadUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/\?dl=0$/, '');
+      }
 
-      await new Promise<void>((resolve, reject) => {
-        uploadTask.on(
-          'state_changed',
-          snap => setUploadProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
-          err => reject(err),
-          () => resolve()
-        );
-      });
-
-      const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-
-      // 2. Save metadata to Firestore
       await addDoc(collection(db, 'ebooks'), {
         title: form.title,
         author: form.author || appUser!.displayName || 'Teacher',
         subject: form.subject,
-        pages: +form.pages || 0,
         emoji: form.emoji || '📚',
-        size: `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB`,
+        size: 'Link',
         uploadedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         downloadUrl,
-        storagePath: path,
         teacherId: appUser!.uid,
         coverUrl: form.coverUrl || '',
+        classIds: selectedClasses,
+        settings: {
+          allowDownload: form.allowDownload,
+          saveProgress: form.saveProgress,
+          allowAnnotations: form.allowAnnotations
+        },
         createdAt: serverTimestamp()
       });
 
-      setForm({ title: '', author: '', subject: 'Math', emoji: '📚', pages: '', coverUrl: '' });
-      setSelectedFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      // Notify selected classes
+      await notifyStudentsForNewEbook(form.title, selectedClasses, appUser?.displayName || 'Your Teacher', true);
+
+      setForm({ title: '', author: '', subject: 'Math', emoji: '📚', link: '', coverUrl: '', allowDownload: false, saveProgress: true, allowAnnotations: true });
+      setSelectedClasses([]);
       setShowForm(false);
       loadBooks();
     } catch (err: any) {
       console.error(err);
-      alert('Error uploading: ' + err.message);
+      alert('Error saving link: ' + err.message);
     }
     setUploading(false);
-    setUploadProgress(0);
   };
 
   const handleDelete = async (book: Ebook) => {
     if (!confirm(`Delete "${book.title}"? This cannot be undone.`)) return;
     try {
-      // Delete from Storage if path exists
-      if (book.storagePath) {
-        try {
-          await deleteObject(storageRef(storage, book.storagePath));
-        } catch (e) { /* file may already be deleted */ }
-      }
-      // Delete from Firestore
       await deleteDoc(doc(db, 'ebooks', book.id));
       loadBooks();
     } catch (err: any) {
       alert('Error deleting: ' + err.message);
+    }
+  };
+
+  const saveSettings = async (bookId: string, newSettings: any, newClasses: string[]) => {
+    try {
+      await updateDoc(doc(db, 'ebooks', bookId), { settings: newSettings, classIds: newClasses });
+      setBooks(books.map(b => b.id === bookId ? { ...b, settings: newSettings, classIds: newClasses } : b));
+      setEditingSettings(null);
+    } catch (err: any) {
+      alert('Error updating settings: ' + err.message);
     }
   };
 
@@ -143,10 +142,10 @@ export default function TeacherEbooksPage() {
           <h1 style={{ fontSize: '1.75rem', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.5px', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Library size={22} color="#6366f1" /> E-Book Manager
           </h1>
-          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Upload and manage e-books for your students. Files are stored in Firebase Storage.</p>
+          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Add external PDF links (e.g., Google Drive) for your students.</p>
         </div>
         <button onClick={() => setShowForm(!showForm)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '0.625rem', fontWeight: '700', fontSize: '0.875rem', cursor: 'pointer' }}>
-          <Plus size={15} /> Upload E-Book
+          <Plus size={15} /> Add E-Book
         </button>
       </div>
 
@@ -162,8 +161,8 @@ export default function TeacherEbooksPage() {
               <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="SAT Math — Chapter 3" className="input-field" />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#475569', marginBottom: '0.375rem' }}>Author</label>
-              <input value={form.author} onChange={e => setForm(f => ({ ...f, author: e.target.value }))} placeholder="Your name" className="input-field" />
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginBottom: '0.25rem' }}>Author / Source</label>
+              <input value={form.author} onChange={e => setForm({...form, author: e.target.value})} className="input-field" placeholder={`Default: ${appUser?.displayName || 'Teacher'}`} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#475569', marginBottom: '0.375rem' }}>Subject</label>
@@ -173,49 +172,11 @@ export default function TeacherEbooksPage() {
                 {(!appUser?.teacherSubject || appUser.teacherSubject === 'Both') && <option>Both</option>}
               </select>
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#475569', marginBottom: '0.375rem' }}>Pages</label>
-              <input type="number" value={form.pages} onChange={e => setForm(f => ({ ...f, pages: e.target.value }))} placeholder="0" className="input-field" />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#475569', marginBottom: '0.375rem' }}>Emoji Icon</label>
-              <input value={form.emoji} onChange={e => setForm(f => ({ ...f, emoji: e.target.value }))} placeholder="📚" className="input-field" />
-            </div>
-
-            {/* PDF Upload area */}
             <div style={{ gridColumn: '1/-1' }}>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#475569', marginBottom: '0.375rem' }}>PDF File *</label>
-              <div
-                style={{ border: '2px dashed #c4b5fd', borderRadius: '0.625rem', padding: '1.5rem', textAlign: 'center', cursor: 'pointer', background: '#fff', transition: 'border-color 0.2s' }}
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#7c3aed'; }}
-                onDragLeave={e => { e.currentTarget.style.borderColor = '#c4b5fd'; }}
-                onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) setSelectedFile(f); }}
-              >
-                <Upload size={20} color="#8b5cf6" style={{ margin: '0 auto 0.5rem' }} />
-                {selectedFile ? (
-                  <p style={{ fontSize: '0.85rem', color: '#4c1d95', fontWeight: '700' }}>✅ {selectedFile.name} ({(selectedFile.size / (1024*1024)).toFixed(1)} MB)</p>
-                ) : (
-                  <>
-                    <p style={{ fontSize: '0.8rem', color: '#6d28d9', fontWeight: '600' }}>Drop PDF here or click to upload</p>
-                    <p style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.25rem' }}>Max 25MB — PDF files only</p>
-                  </>
-                )}
-              </div>
-              <input ref={fileInputRef} type="file" accept=".pdf,application/pdf" style={{ display: 'none' }} onChange={handleFileChange} />
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginBottom: '0.25rem' }}>Google Drive Link *</label>
+              <input type="url" value={form.link} onChange={e => setForm({...form, link: e.target.value})} className="input-field" placeholder="https://drive.google.com/file/d/..." />
             </div>
-          </div>
-
-          {uploading && (
-            <div style={{ marginBottom: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#6d28d9', fontWeight: '600', marginBottom: '0.25rem' }}>
-                <span>Uploading to Firebase Storage...</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <div style={{ background: '#ede9fe', borderRadius: '999px', height: '6px', overflow: 'hidden' }}>
-                <div style={{ background: '#7c3aed', height: '100%', width: `${uploadProgress}%`, transition: 'width 0.3s' }} />
-              </div>
-              <div>
+            <div style={{ gridColumn: '1/-1' }}>
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#475569', marginBottom: '0.5rem' }}>Cover Image (Optional)</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   {form.coverUrl && (
@@ -226,12 +187,69 @@ export default function TeacherEbooksPage() {
                     buttonText="Upload Cover"
                   />
                 </div>
+            </div>
+
+            <div style={{ gridColumn: '1/-1', marginTop: '1rem' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.75rem' }}>Assign to Classes</label>
+              {teacherClasses.length === 0 ? (
+                <div style={{ fontSize: '0.8rem', color: '#64748b', padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px dashed #cbd5e1' }}>
+                  You don't have any classes yet. Book will be hidden until assigned.
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.5rem' }}>
+                  {teacherClasses.map(c => (
+                    <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', background: selectedClasses.includes(c.id) ? '#eff6ff' : '#fff', border: selectedClasses.includes(c.id) ? '1px solid #3b82f6' : '1px solid #e2e8f0', borderRadius: '0.5rem', cursor: 'pointer', transition: 'all 0.2s' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedClasses.includes(c.id)} 
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedClasses(prev => [...prev, c.id]);
+                          else setSelectedClasses(prev => prev.filter(id => id !== c.id));
+                        }}
+                        style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }}
+                      />
+                      <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>{c.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ gridColumn: '1/-1', marginTop: '1rem' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.75rem' }}>E-Book Features & Settings</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.allowDownload} onChange={e => setForm({...form, allowDownload: e.target.checked})} style={{ width: '18px', height: '18px', accentColor: '#6366f1' }} />
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#334155' }}>Allow Download</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Students can download the PDF file directly.</div>
+                  </div>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.saveProgress} onChange={e => setForm({...form, saveProgress: e.target.checked})} style={{ width: '18px', height: '18px', accentColor: '#6366f1' }} />
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#334155' }}>Save Reading Progress</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Automatically resume from the last read page (requires direct PDF link).</div>
+                  </div>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.allowAnnotations} onChange={e => setForm({...form, allowAnnotations: e.target.checked})} style={{ width: '18px', height: '18px', accentColor: '#6366f1' }} />
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#334155' }}>Allow Drawing & Annotations</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Students can draw with a pen on pages (requires direct PDF link).</div>
+                  </div>
+                </label>
               </div>
             </div>
-          )}
+          </div>
 
-          <button onClick={addBook} disabled={uploading} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.7 : 1 }}>
-            {uploading ? <><Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> Uploading {uploadProgress}%</> : <><Upload size={14} /> Upload E-Book</>}
+          <button 
+            onClick={addBook}
+            disabled={uploading || !form.title || !form.link}
+            style={{ width: '100%', padding: '0.75rem', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: '700', cursor: uploading || !form.title || !form.link ? 'not-allowed' : 'pointer', marginTop: '1rem', opacity: uploading || !form.title || !form.link ? 0.6 : 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+          >
+            {uploading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={16} />} 
+            {uploading ? 'Saving...' : 'Add Link'}
           </button>
         </div>
       )}
@@ -241,7 +259,7 @@ export default function TeacherEbooksPage() {
       ) : books.length === 0 ? (
         <div style={{ padding: '4rem', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: '1rem', border: '1px dashed #cbd5e1' }}>
           <Library size={48} color="#cbd5e1" style={{ margin: '0 auto 1rem' }} />
-          <p>No e-books uploaded yet. Click "Upload E-Book" to get started.</p>
+          <p>No e-books added yet. Click "Add E-Book" to get started.</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
@@ -263,18 +281,24 @@ export default function TeacherEbooksPage() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.875rem', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.65rem', fontWeight: '700', padding: '0.1rem 0.4rem', borderRadius: '0.25rem', background: '#ede9fe', color: '#6d28d9' }}>{book.subject}</span>
-                {book.pages > 0 && <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{book.pages} pages</span>}
-                <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{book.size}</span>
+                <span style={{ padding: '0.2rem 0.5rem', background: '#f1f5f9', borderRadius: '0.25rem', fontSize: '0.65rem', fontWeight: '700', color: '#475569' }}>{book.subject}</span>
+                <span style={{ padding: '0.2rem 0.5rem', background: '#f1f5f9', borderRadius: '0.25rem', fontSize: '0.65rem', fontWeight: '700', color: '#475569' }}>External Link</span>
                 <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{book.uploadedAt}</span>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto' }}>
-                <a href={book.downloadUrl} target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem', padding: '0.5rem', background: '#f0f4ff', color: '#4f46e5', borderRadius: '0.375rem', fontWeight: '600', fontSize: '0.75rem', textDecoration: 'none' }}>
-                  <Eye size={13} /> View PDF
-                </a>
-                <a href={book.downloadUrl} download style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem', background: '#f0fdf4', color: '#16a34a', borderRadius: '0.375rem', border: 'none' }}>
-                  <Download size={13} />
-                </a>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', flexWrap: 'wrap' }}>
+                <button 
+                  onClick={() => setViewingPdf(book)}
+                  style={{ flex: 1, padding: '0.5rem', background: '#f8fafc', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: '0.375rem', fontWeight: '700', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem', cursor: 'pointer' }}>
+                  <Eye size={13} /> View
+                </button>
+                <button 
+                  onClick={() => {
+                    setEditingSettings(book);
+                    setEditSelectedClasses(book.classIds || []);
+                  }}
+                  style={{ flex: 1, padding: '0.5rem', background: '#0f172a', color: '#fff', border: 'none', borderRadius: '0.375rem', fontWeight: '700', fontSize: '0.75rem', cursor: 'pointer' }}>
+                  Settings
+                </button>
                 <button onClick={() => handleDelete(book)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem 0.75rem', background: '#fff0f0', color: '#ef4444', border: 'none', borderRadius: '0.375rem', cursor: 'pointer' }}>
                   <Trash2 size={13} />
                 </button>
@@ -283,6 +307,89 @@ export default function TeacherEbooksPage() {
           ))}
         </div>
       )}
+
+      {/* PDF Viewer Modal */}
+      {viewingPdf && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(4px)' }}>
+          <div style={{ width: '90%', maxWidth: '1200px', height: '90vh', background: '#fff', borderRadius: '1rem', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <FileText size={20} color="#6366f1" /> Teacher Preview
+              </h3>
+              <button onClick={() => setViewingPdf(null)} style={{ background: '#e2e8f0', border: 'none', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <PdfViewer 
+                url={viewingPdf.downloadUrl || ''} 
+                ebookId={viewingPdf.id}
+                studentId="teacher_preview"
+                allowAnnotations={viewingPdf.settings?.allowAnnotations ?? true}
+                saveProgress={false}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Settings Modal */}
+      {editingSettings && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.8)' }}>
+          <div style={{ width: '100%', maxWidth: '500px', background: '#fff', borderRadius: '1rem', padding: '2rem', maxHeight: '90vh', overflow: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>Edit Features</h3>
+              <button onClick={() => setEditingSettings(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={20} color="#64748b" /></button>
+            </div>
+
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.75rem' }}>Assign to Classes</label>
+            {teacherClasses.length === 0 ? (
+              <div style={{ fontSize: '0.8rem', color: '#64748b', padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px dashed #cbd5e1', marginBottom: '1.5rem' }}>
+                You don't have any classes yet.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                {teacherClasses.map(c => (
+                  <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', background: editSelectedClasses.includes(c.id) ? '#eff6ff' : '#fff', border: editSelectedClasses.includes(c.id) ? '1px solid #3b82f6' : '1px solid #e2e8f0', borderRadius: '0.5rem', cursor: 'pointer', transition: 'all 0.2s' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={editSelectedClasses.includes(c.id)} 
+                      onChange={(e) => {
+                        if (e.target.checked) setEditSelectedClasses(prev => [...prev, c.id]);
+                        else setEditSelectedClasses(prev => prev.filter(id => id !== c.id));
+                      }}
+                      style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }}
+                    />
+                    <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#334155' }}>{c.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.75rem' }}>Settings</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={editingSettings.settings?.allowDownload ?? true} onChange={e => setEditingSettings({...editingSettings, settings: {...(editingSettings.settings as any), allowDownload: e.target.checked}})} style={{ width: '18px', height: '18px' }} />
+                <div><div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#334155' }}>Allow Download</div><div style={{ fontSize: '0.8rem', color: '#64748b' }}>Students can download the PDF file directly.</div></div>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={editingSettings.settings?.saveProgress ?? true} onChange={e => setEditingSettings({...editingSettings, settings: {...(editingSettings.settings as any), saveProgress: e.target.checked}})} style={{ width: '18px', height: '18px' }} />
+                <div><div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#334155' }}>Save Progress</div><div style={{ fontSize: '0.8rem', color: '#64748b' }}>Automatically resume from the last read page.</div></div>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={editingSettings.settings?.allowAnnotations ?? true} onChange={e => setEditingSettings({...editingSettings, settings: {...(editingSettings.settings as any), allowAnnotations: e.target.checked}})} style={{ width: '18px', height: '18px' }} />
+                <div><div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#334155' }}>Allow Annotations</div><div style={{ fontSize: '0.8rem', color: '#64748b' }}>Students can draw with a pen on pages.</div></div>
+              </label>
+            </div>
+            <button 
+              onClick={() => saveSettings(editingSettings.id, editingSettings.settings, editSelectedClasses)}
+              style={{ width: '100%', padding: '0.75rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: '700', marginTop: '2rem', cursor: 'pointer' }}>
+              Save Changes
+            </button>
+          </div>
+        </div>
+      )}
+
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );

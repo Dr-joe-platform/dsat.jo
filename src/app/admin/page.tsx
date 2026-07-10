@@ -521,6 +521,14 @@ export default function AdminDashboardPage() {
                   if (editRole === 'teacher') payload.teacherSubject = editTeacherSub || null;
                   if (editRole === 'student') {
                     payload.planId = editPlanId || null;
+                    if (editPlanId) {
+                      const selectedPlan = plans.find(p => p.id === editPlanId);
+                      if (selectedPlan) {
+                        payload.planName = selectedPlan.name;
+                      }
+                    } else {
+                      payload.planName = 'Free';
+                    }
                     payload.teacherCodes = editTeacherCodes.split(',').map(c => c.trim()).filter(Boolean);
                   }
 

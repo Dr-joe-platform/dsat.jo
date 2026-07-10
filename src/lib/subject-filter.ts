@@ -86,11 +86,9 @@ export function itemMatchesStudent(
   itemSubject: TestSubject,
   studentSubject: StudentSubject | string | undefined
 ): boolean {
-  const student = normalizeStudentSubject(studentSubject);
-  const item = normalizeSubject(itemSubject);
-  if (!student || student === 'both') return true;
-  if (item === 'both' || item === 'general') return true;
-  return item === student;
+  // As requested, cancel the concept of student subject restrictions. 
+  // Students have both subjects, what matters is teacher assignment or admin global items.
+  return true;
 }
 
 export function resultMatchesTeacher<T extends { subject?: TestSubject }>(

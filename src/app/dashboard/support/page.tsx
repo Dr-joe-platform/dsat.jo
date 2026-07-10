@@ -77,11 +77,10 @@ export default function SupportPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           
           {/* Contact Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
             {[
-              { icon: Send, label: 'Telegram', desc: 'Fastest response', link: '#', color: '#2CA5E0', bg: '#E8F4FD' },
-              { icon: Mail, label: 'Email Us', desc: 'support@dsat.jo', link: 'mailto:support@dsat.jo', color: '#4f46e5', bg: '#e0e7ff' },
-              { icon: MessageCircle, label: 'Discord', desc: 'Community help', link: '#', color: '#5865F2', bg: '#EEF0FF' },
+              { icon: MessageCircle, label: 'WhatsApp', desc: '+201114436085', link: 'https://wa.me/201114436085', color: '#25D366', bg: '#dcfce7' },
+              { icon: Mail, label: 'Email Us', desc: 'dsatjoesupport@gmail.com', link: 'mailto:dsatjoesupport@gmail.com', color: '#4f46e5', bg: '#e0e7ff' }
             ].map((item, i) => (
               <a key={i} href={item.link} style={{ textDecoration: 'none' }}>
                 <div style={{ 

@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Sparkles, Lock, BarChart2, ArrowRight, CheckCircle, Clock, BookOpen, Settings, Loader2, X } from 'lucide-react';
+import { Sparkles, Lock, BarChart2, ArrowRight, CheckCircle, Clock, BookOpen, Settings, Loader2, X, ExternalLink, GraduationCap } from 'lucide-react';
 import { useResults } from '@/lib/hooks/useResults';
+import { useAuth } from '@/lib/auth-context';
+import { getTeacherIdsForStudent, getStudyPlansByTeacher, StudyPlan } from '@/lib/db';
 
 const typeColors: Record<string, { bg: string; color: string }> = {
   'R&W': { bg: '#ede9fe', color: '#6d28d9' },
@@ -24,10 +26,12 @@ function generateWeekDays() {
 }
 
 export default function StudyPlanPage() {
+  const { appUser } = useAuth();
   const { results, loading } = useResults();
   const [weekDays, setWeekDays] = useState<Date[]>([]);
   
   const [plan, setPlan] = useState<any[]>([]);
+  const [teacherPlans, setTeacherPlans] = useState<StudyPlan[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [generating, setGenerating] = useState(false);
   
@@ -35,6 +39,25 @@ export default function StudyPlanPage() {
   const [intensity, setIntensity] = useState('Balanced'); // Casual, Balanced, Intense
   const [focus, setFocus] = useState('Balanced'); // Math, R&W, Balanced
   const [level, setLevel] = useState('Intermediate'); // Beginner, Intermediate, Advanced
+
+  useEffect(() => {
+    if (appUser) {
+      const loadTeacherPlans = async () => {
+        try {
+          const teacherIds = await getTeacherIdsForStudent(appUser.uid);
+          const allPlans: StudyPlan[] = [];
+          for (const tId of teacherIds) {
+            const plans = await getStudyPlansByTeacher(tId);
+            allPlans.push(...plans);
+          }
+          setTeacherPlans(allPlans);
+        } catch (err) {
+          console.error("Failed to load teacher plans", err);
+        }
+      };
+      loadTeacherPlans();
+    }
+  }, [appUser]);
 
   useEffect(() => {
     setWeekDays(generateWeekDays());
@@ -171,6 +194,41 @@ export default function StudyPlanPage() {
         </div>
       )}
 
+      {/* Teacher Study Plans Section */}
+      {teacherPlans.length > 0 && (
+        <div style={{ marginBottom: '3rem' }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.5px', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <GraduationCap size={24} color="#3b82f6" /> Teacher Study Plans
+          </h1>
+          <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+            Study materials and schedules assigned by your teacher.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+            {teacherPlans.map((tp, idx) => (
+              <div key={idx} className="stat-card" style={{ padding: '1.5rem', background: '#fff', border: '1px solid #e2e8f0' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a', marginBottom: '0.5rem' }}>{tp.title}</h3>
+                <p style={{ fontSize: '0.875rem', color: '#475569', marginBottom: '1rem', lineHeight: '1.5' }}>{tp.description}</p>
+                {tp.items && tp.items.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', borderTop: '1px solid #f1f5f9', paddingTop: '1rem' }}>
+                    {tp.items.map((item, i) => (
+                      <div key={i} style={{ display: 'flex', flexDirection: 'column', background: '#f8fafc', padding: '0.75rem', borderRadius: '0.5rem' }}>
+                        <div style={{ fontWeight: '600', fontSize: '0.85rem', color: '#1e293b' }}>{item.title}</div>
+                        {item.description && <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.25rem' }}>{item.description}</div>}
+                        {item.link && (
+                          <a href={item.link} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', color: '#3b82f6', textDecoration: 'none', fontWeight: '600', marginTop: '0.5rem' }}>
+                            Open Link <ExternalLink size={12} />
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.5px', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -288,21 +346,6 @@ export default function StudyPlanPage() {
             </div>
           </div>
         ))}
-      </div>
-
-      {/* Upgrade CTA */}
-      <div style={{ marginTop: '1.5rem', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', borderRadius: '1rem', padding: '1.75rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <Lock size={14} color="#c7d2fe" />
-            <span style={{ color: '#c7d2fe', fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.05em' }}>PRO FEATURE</span>
-          </div>
-          <h3 style={{ color: '#fff', fontSize: '1.125rem', fontWeight: '700', marginBottom: '0.25rem' }}>Get Unlimited AI Study Plans</h3>
-          <p style={{ color: '#a5b4fc', fontSize: '0.875rem' }}>Upgrade to Pro or Elite to unlock long-term personalized plans.</p>
-        </div>
-        <Link href="/dashboard/upgrade" style={{ background: '#fff', color: '#4f46e5', padding: '0.75rem 1.5rem', borderRadius: '0.625rem', fontWeight: '700', fontSize: '0.875rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.375rem', flexShrink: 0 }}>
-          Upgrade <ArrowRight size={14} />
-        </Link>
       </div>
     </div>
   );

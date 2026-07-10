@@ -1,12 +1,26 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Library, Download, Eye, FileText, BookOpen, Search, Filter } from 'lucide-react';
+import { Library, Download, Eye, FileText, BookOpen, Search, Filter, X } from 'lucide-react';
 
-import { getEbooks } from '@/lib/db';
+import { getEbooks, EbookSettings } from '@/lib/db';
 import { useAuth } from '@/lib/auth-context';
+import PdfViewer from '@/components/PdfViewer';
 
-import { Ebook } from '@/lib/db';
+interface Ebook {
+  id: string;
+  title: string;
+  author: string;
+  description: string;
+  pdfUrl?: string;
+  downloadUrl?: string;
+  coverUrl?: string;
+  subject?: string;
+  coverEmoji?: string;
+  teacherId?: string;
+  settings?: EbookSettings;
+}
+
 const subjectColor = (s: string) => {
   if (s === 'Math') return { bg: '#dbeafe', color: '#1d4ed8' };
   if (s === 'R&W') return { bg: '#f3e8ff', color: '#7c3aed' };
@@ -27,6 +41,7 @@ export default function EbooksPage() {
   const [category, setCategory] = useState('All');
   const [ebooks, setEbooks] = useState<Ebook[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewingPdf, setViewingPdf] = useState<Ebook | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -40,8 +55,8 @@ export default function EbooksPage() {
   }, [appUser]);
 
   const filteredBooks = ebooks.filter(book => {
-    const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          book.author.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (book.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (book.author || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = category === 'All' || book.subject === category;
     return matchesSearch && matchesCategory;
   });
@@ -106,7 +121,7 @@ export default function EbooksPage() {
           <p style={{ color: '#64748b' }}>Try adjusting your search terms or category filter.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+        <div className="responsive-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
           {filteredBooks.map((book) => {
             const sc = subjectColor(book.subject || '');
             return (
@@ -136,25 +151,52 @@ export default function EbooksPage() {
                   <p style={{ fontSize: '0.85rem', color: '#334155', lineHeight: '1.5', flex: 1, marginBottom: '1.5rem' }}>{book.description}</p>
                   
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto' }}>
-                    <a 
-                      href={book.pdfUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ flex: 1, padding: '0.625rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: '#fff', color: '#475569', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem', textDecoration: 'none', transition: 'all 0.2s' }}
+                    <button 
+                      onClick={() => setViewingPdf(book)}
+                      style={{ flex: 1, padding: '0.625rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem', background: '#fff', color: '#475569', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem', transition: 'all 0.2s' }}
                     >
                       <Eye size={14} /> View
-                    </a>
-                    <a href={book.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flex: 1, padding: '0.75rem', background: '#0f172a', color: '#fff', borderRadius: '0.75rem', fontWeight: '700', fontSize: '0.9rem', textDecoration: 'none', transition: 'background 0.2s' }}
-                     onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#1e293b'}
-                     onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = '#0f172a'}>
-                    <Download size={18} />
-                    Download
-                  </a>
+                    </button>
+                    {((book.settings?.allowDownload ?? true)) && (
+                      <a href={book.downloadUrl || book.pdfUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flex: 1, padding: '0.75rem', background: '#0f172a', color: '#fff', borderRadius: '0.75rem', fontWeight: '700', fontSize: '0.9rem', textDecoration: 'none', transition: 'background 0.2s' }}
+                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#1e293b'}
+                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = '#0f172a'}>
+                        Open Link
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* PDF Viewer Modal */}
+      {viewingPdf && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(4px)' }}>
+          <div className="responsive-modal" style={{ width: '90%', maxWidth: '1200px', height: '90vh', background: '#fff', borderRadius: '1rem', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <FileText size={20} color="#6366f1" /> Document Viewer
+              </h3>
+              <button 
+                onClick={() => setViewingPdf(null)}
+                style={{ background: '#e2e8f0', border: 'none', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#475569' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ flex: 1, position: 'relative', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <PdfViewer 
+                url={viewingPdf.downloadUrl || viewingPdf.pdfUrl || ''} 
+                ebookId={viewingPdf.id}
+                studentId={appUser?.uid || 'guest'}
+                allowAnnotations={viewingPdf.settings?.allowAnnotations ?? true}
+                saveProgress={viewingPdf.settings?.saveProgress ?? true}
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>

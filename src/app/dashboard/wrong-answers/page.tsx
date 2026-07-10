@@ -64,105 +64,100 @@ export default function WrongAnswersPage() {
     if (!appUser?.uid) return;
     const loadQuestions = async () => {
       try {
+        const { getAllAvailableQuestions } = await import('@/lib/questions-pool');
         const results = await getUserResults(appUser.uid);
         const questions: WrongQuestion[] = [];
         const seen = new Set<string>();
 
-        // Pre-build a map of all questions for O(1) lookup
+        // Pre-build a map of ALL possible questions the user has access to
+        const allAvailableQs = await getAllAvailableQuestions(appUser.uid, appUser.subject);
         const allQuestionsMap = new Map<string, DSATQuestion>();
+        allAvailableQs.forEach(q => allQuestionsMap.set(q.id, q));
+
+        // Add static mock tests as a fallback
         Object.values(ALL_TEST_QUESTIONS).forEach(td => {
           ['M1', 'M2H', 'M2E', 'MATH_M1', 'MATH_M2H', 'MATH_M2E'].forEach(mod => {
             const qs = td[mod as keyof typeof td];
             if (qs && Array.isArray(qs)) {
-              qs.forEach(q => allQuestionsMap.set(q.id, q));
+              qs.forEach(q => allQuestionsMap.set(q.id, q as DSATQuestion));
             }
           });
         });
 
-        // Collect custom tests to fetch
+        // Add custom tests that might have been deleted but are in results
         const customTestIds = new Set<string>();
         results.forEach(r => {
-          if (r.testId && !ALL_TEST_QUESTIONS[r.testId as keyof typeof ALL_TEST_QUESTIONS]) {
+          if (r.testId && r.testId !== 'question_bank' && !ALL_TEST_QUESTIONS[r.testId as keyof typeof ALL_TEST_QUESTIONS]) {
             customTestIds.add(r.testId);
           }
         });
 
         const customTestsMap = new Map<string, any>();
         for (const tid of customTestIds) {
-          if (!tid) continue;
-            try {
-              const t = await getTestById(tid);
-              if (t) {
-                if ((t as any).content) {
-                  const parsed = JSON.parse((t as any).content);
-                  const isFullTest = (t as any).subject === 'Full';
-                  const m1: any[] = [];
-                  const m2h: any[] = [];
-                  const mathM1: any[] = [];
-                  const mathM2h: any[] = [];
-                  parsed.forEach((q: any) => {
-                    let cleanQuestion = q.question || '';
-                    cleanQuestion = cleanQuestion.replace(/!\[.*?\]\((.*?)\)/g, '').trim();
-                    cleanQuestion = cleanQuestion.replace(/\[.*?\]\((.*?)\)/g, '').trim();
-                    cleanQuestion = cleanQuestion.replace(/(https?:\/\/[^\s]+)/g, '').trim();
-
-                    const formattedQ = {
-                      id: q.id || `custom-${Math.random()}`,
-                      domain: q.domain || '',
-                      skill: q.skill || '',
-                      text: cleanQuestion,
-                      passage: q.passage || null,
-                      imageUrl: q.imageUrl || q.image || null,
-                      question: cleanQuestion,
-                      options: q.options && q.options.length > 0 ? q.options : undefined,
-                      correctAnswer: q.correctAnswer || (q.options ? ['A','B','C','D'][q.answer || 0] : ''),
-                      explanation: q.explanation || '',
-                      type: (q.type === 'MCQ' || q.type === 'MC') ? 'MC' : (q.options && q.options.length > 0 ? 'MC' : 'SPR')
-                    };
-                    
-                    if (isFullTest) {
-                      if (q.module === 'M1') m1.push(formattedQ);
-                      else if (q.module === 'M2H' || q.module === 'M2E' || q.module === 'M2') m2h.push(formattedQ);
-                      else if (q.module === 'MATH_M1') mathM1.push(formattedQ);
-                      else if (q.module === 'MATH_M2H' || q.module === 'MATH_M2') mathM2h.push(formattedQ);
-                      else m1.push(formattedQ);
-                    } else {
-                      if (String(q.module).includes('1') || String(q.module).toUpperCase().includes('M1')) m1.push(formattedQ);
-                      else if (String(q.module).includes('2') || String(q.module).toUpperCase().includes('M2')) m2h.push(formattedQ);
-                      else m1.push(formattedQ);
-                    }
-                  });
-                  customTestsMap.set(tid, {
-                    M1: m1,
-                    M2H: m2h,
-                    M2E: [],
-                    MATH_M1: mathM1,
-                    MATH_M2H: mathM2h,
-                    MATH_M2E: []
-                  });
+          try {
+            const t = await getTestById(tid);
+            if (t && (t as any).content) {
+              const parsed = JSON.parse((t as any).content);
+              const tData: any = { M1: [], M2H: [], MATH_M1: [], MATH_M2H: [] };
+              const isFull = (t as any).subject === 'Full' || (t as any).subject === 'Mixed';
+              
+              parsed.forEach((q: any) => {
+                const qid = q.id || `custom-${Math.random()}`;
+                const formattedQ: DSATQuestion = {
+                  id: qid,
+                  module: q.module || 1,
+                  difficulty: q.difficulty || 'Medium',
+                  domain: q.domain || 'General',
+                  skill: q.skill || 'General',
+                  text: q.question || '',
+                  passage: q.passage || undefined,
+                  passageName: q.passageName || undefined,
+                  passageStartLine: q.passageStartLine || undefined,
+                  imageUrl: q.imageUrl || q.image || undefined,
+                  options: q.options && q.options.length > 0 ? q.options : undefined,
+                  correctAnswer: q.correctAnswer || (q.options ? ['A','B','C','D'][q.answer || 0] : ''),
+                  explanation: q.explanation || '',
+                  type: (q.type === 'MCQ' || q.type === 'MC' || (q.options && q.options.length > 0)) ? 'MC' : 'SPR'
+                };
+                allQuestionsMap.set(qid, formattedQ);
+                
+                if (isFull) {
+                  if (q.module === 'M1') tData.M1.push(formattedQ);
+                  else if (q.module === 'M2H' || q.module === 'M2E' || q.module === 'M2') tData.M2H.push(formattedQ);
+                  else if (q.module === 'MATH_M1') tData.MATH_M1.push(formattedQ);
+                  else if (q.module === 'MATH_M2H' || q.module === 'MATH_M2') tData.MATH_M2H.push(formattedQ);
+                  else tData.M1.push(formattedQ);
                 } else {
-                  customTestsMap.set(tid, t);
+                  if (String(q.module).includes('1') || String(q.module).toUpperCase().includes('M1')) tData.M1.push(formattedQ);
+                  else if (String(q.module).includes('2') || String(q.module).toUpperCase().includes('M2')) tData.M2H.push(formattedQ);
+                  else tData.M1.push(formattedQ);
                 }
-              } else {
+              });
+              customTestsMap.set(tid, tData);
+            } else {
               const mq = await getMiniQuizById(tid);
               if (mq) {
-                const formattedMq = (mq.questions || []).map((q: any, i: number) => ({
-                  id: `mini-${tid}-${i}`,
-                  text: q.question,
-                  options: q.options && q.options.length > 0 && q.options.some((o: string) => o.trim()) ? q.options : undefined,
-                  correctAnswer: q.options && q.options.length > 0 && q.options.some((o: string) => o.trim()) ? ['A','B','C','D'][q.answer || 0] : q.answer,
-                  type: q.options && q.options.length > 0 && q.options.some((o: string) => o.trim()) ? 'MC' : 'SPR'
-                }));
-                customTestsMap.set(tid, {
-                  M1: formattedMq,
-                  M2H: [],
-                  M2E: []
+                const m1: any[] = [];
+                (mq.questions || []).forEach((q: any, i: number) => {
+                  const qid = `mini-${tid}-${i}`;
+                  const formattedMq: DSATQuestion = {
+                    id: qid,
+                    module: q.module || 1,
+                    difficulty: q.difficulty || 'Medium',
+                    text: q.question,
+                    domain: 'General',
+                    skill: 'General',
+                    options: q.options && q.options.length > 0 && q.options.some((o: string) => o.trim()) ? q.options : undefined,
+                    correctAnswer: q.options && q.options.length > 0 && q.options.some((o: string) => o.trim()) ? ['A','B','C','D'][q.answer || 0] : q.answer,
+                    type: q.options && q.options.length > 0 && q.options.some((o: string) => o.trim()) ? 'MC' : 'SPR'
+                  };
+                  allQuestionsMap.set(qid, formattedMq);
+                  m1.push(formattedMq);
                 });
+                customTestsMap.set(tid, { M1: m1 });
               }
             }
-          } catch (fetchErr) {
-            console.error(`Error fetching custom test ${tid}:`, fetchErr);
-          }
+          } catch (e) { console.error(e); }
         }
 
         results.forEach(r => {
@@ -170,9 +165,10 @@ export default function WrongAnswersPage() {
             if (seen.has(qid)) return;
             seen.add(qid);
             
-            let found: DSATQuestion | undefined | null = null;
-            let userAnswer: string | undefined;
+            const found = allQuestionsMap.get(qid);
+            if (!found) return; // Ignore missing questions instead of showing "Content not found"
             
+            let userAnswer: string | undefined;
             const testData = ALL_TEST_QUESTIONS[r.testId as keyof typeof ALL_TEST_QUESTIONS] || customTestsMap.get(r.testId);
             
             if (testData) {
@@ -182,7 +178,6 @@ export default function WrongAnswersPage() {
                 if (qs && Array.isArray(qs)) {
                   const idx = qs.findIndex((q: any) => q.id === qid);
                   if (idx !== -1) {
-                    found = qs[idx];
                     userAnswer = (r as any).answers?.[mod]?.[idx] || (r as any).sprAnswers?.[`spr${mod}`]?.[idx];
                     break;
                   }
@@ -190,20 +185,17 @@ export default function WrongAnswersPage() {
               }
             }
             
-            if (!found) {
-              found = allQuestionsMap.get(qid);
-            }
-
             questions.push({
               id: qid,
               testId: r.testId,
-              testName: r.testName,
-              question: found || null,
+              testName: r.testName || 'Practice Test',
+              question: found,
               date: r.completedAt?.toDate?.()?.toLocaleDateString?.() ?? '',
               userAnswer,
             });
           });
         });
+        
         setWrongQs(questions);
         setLoading(false);
       } catch (err) {

@@ -223,7 +223,7 @@ export default function QuestionBankPage() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {/* Math Subject */}
-        {(!appUser?.subject || appUser?.subject === 'math' || appUser?.subject === 'both') && (
+        {true && (
         <div style={{ border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1.5rem', backgroundColor: '#ffffff' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
@@ -271,7 +271,7 @@ export default function QuestionBankPage() {
         )}
 
         {/* Reading & Writing Subject */}
-        {(!appUser?.subject || appUser?.subject === 'english' || appUser?.subject === 'both') && (
+        {true && (
         <div style={{ border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1.5rem', backgroundColor: '#ffffff' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>

@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react';
 import { Database, Plus, Trash2, Eye, Search, ChevronDown, ChevronUp, Edit, Loader2, X, FileText, UploadCloud } from 'lucide-react';
 import { getTestBanks, toggleTestPublicStatus, deleteTestBank, AdminTestBank, addActivityLog, createTestBank, updateTestBank } from '@/lib/db';
 import { useAuth } from '@/lib/auth-context';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import Link from 'next/link';
 import { parseQuestionsCSV } from '@/lib/csv-parser';
 import { parsePdfToQuestions } from '@/app/actions/parse-pdf';
@@ -31,7 +33,7 @@ export default function TestBankPage() {
   
   // Add Test Modal State
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newTest, setNewTest] = useState({ name: '', subject: 'Math', questions: 44, source: 'Manual Entry' });
+  const [newTest, setNewTest] = useState({ name: '', subject: 'Math', questions: 44, source: 'Manual Entry', allowedPlans: [] as string[] });
   const [modulesConfig, setModulesConfig] = useState({
     M1: { questions: 27, time: 32, name: 'Reading and Writing Module 1' },
     M2: { questions: 27, time: 32, name: 'Reading and Writing Module 2' }
@@ -52,12 +54,17 @@ export default function TestBankPage() {
   // Preview State
   const [generatedQuestions, setGeneratedQuestions] = useState<any[] | null>(null);
   const [previewMode, setPreviewMode] = useState<Record<number, boolean>>({});
+  const [pricingPlans, setPricingPlans] = useState<{id: string, name: string}[]>([]);
 
   const loadTests = async () => {
     setLoading(true);
     try {
       const data = await getTestBanks();
       setTests(data);
+
+      const snap = await getDocs(collection(db, 'pricing'));
+      const plans = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+      setPricingPlans(plans);
     } catch { }
     setLoading(false);
   };
@@ -98,9 +105,9 @@ export default function TestBankPage() {
           if (!res.success || !res.data) throw new Error(res.error || "Failed to parse PDF");
           finalData = res.data;
         } else {
-          finalData = await parseQuestionsCSV(file, newTest.subject === 'English' ? 'M1' : undefined);
+          finalData = await parseQuestionsCSV(file, 'M1');
           if (file2) {
-             const data2 = await parseQuestionsCSV(file2, newTest.subject === 'English' ? 'M2' : undefined);
+             const data2 = await parseQuestionsCSV(file2, 'M2');
              finalData = [...finalData, ...data2];
           }
         }
@@ -120,7 +127,7 @@ export default function TestBankPage() {
       let finalQuestions = generatedQuestions || [];
       if (finalQuestions.length === 0) throw new Error("No questions to save.");
 
-      const testData = {
+      const testData: Partial<AdminTestBank> = {
         name: newTest.name,
         subject: newTest.subject,
         questions: finalQuestions.length || newTest.questions,
@@ -128,14 +135,15 @@ export default function TestBankPage() {
         source: newTest.source,
         isPublic: false,
         content: JSON.stringify(finalQuestions),
-        modulesConfig: newTest.subject === 'English' ? modulesConfig : undefined
+        allowedPlans: newTest.allowedPlans,
+        ...(newTest.subject === 'English' ? { modulesConfig } : {})
       };
-      await createTestBank(testData);
+      await createTestBank(testData as any);
       await addActivityLog({ type: 'admin', action: 'Test Created', user: appUser?.email || 'Admin', details: `Created test: ${newTest.name}`, severity: 'info' });
       await loadTests();
       setShowAddModal(false);
-      setGeneratedQuestions(null); setPreviewMode({});
-      setNewTest({ name: '', subject: 'Math', questions: 44, source: 'Manual Entry' });
+      setGeneratedQuestions(null);
+      setNewTest({ name: '', subject: 'Math', questions: 44, source: 'Manual Entry', allowedPlans: [] });
       setFile(null);
       setFile2(null);
     } catch (err: any) {
@@ -211,6 +219,32 @@ export default function TestBankPage() {
               <div>
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginBottom: '0.25rem' }}>Source / Notes</label>
                 <input type="text" value={newTest.source} onChange={e => setNewTest({ ...newTest, source: e.target.value })} className="input-field" placeholder="e.g. Official CB 2024" />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginBottom: '0.25rem' }}>Restrict to Subscription Plans</label>
+                <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: '0.5rem' }}>If no plans are selected, this test will be accessible to all users.</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '0.5rem', border: '1px solid #cbd5e1' }}>
+                  {pricingPlans.length === 0 ? (
+                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>No pricing plans found.</div>
+                  ) : pricingPlans.map(plan => (
+                    <label key={plan.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={newTest.allowedPlans.includes(plan.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewTest({...newTest, allowedPlans: [...newTest.allowedPlans, plan.id]});
+                          } else {
+                            setNewTest({...newTest, allowedPlans: newTest.allowedPlans.filter(p => p !== plan.id)});
+                          }
+                        }}
+                        style={{ width: '16px', height: '16px', accentColor: '#6366f1' }}
+                      />
+                      <span style={{ fontSize: '0.85rem', color: '#334155', fontWeight: '500' }}>{plan.name}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
 
               {newTest.subject === 'English' && (
@@ -336,8 +370,27 @@ export default function TestBankPage() {
                         )}
                         {isPreview ? (
                           <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #cbd5e1', fontSize: '0.95rem', lineHeight: '1.6', color: '#1e293b' }}>
-                            {q.passage && (
+                            {q.passageName && (
                               <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}>
+                                <h4 style={{ margin: '0 0 0.5rem 0', color: '#1e293b' }}>{q.passageName}</h4>
+                                {q.passage && (
+                                  <div style={{ display: 'flex', gap: '1rem' }}>
+                                    {q.passageStartLine !== undefined && (
+                                      <div style={{ color: '#94a3b8', fontSize: '0.8rem', userSelect: 'none' }}>
+                                        {q.passage.split('\n').map((_: string, i: number) => (
+                                          <div key={i}>{(q.passageStartLine! + i) % 5 === 0 ? q.passageStartLine! + i : '\u00A0'}</div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    <div style={{ whiteSpace: 'pre-wrap' }}>
+                                      <Latex>{q.passage}</Latex>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {!q.passageName && q.passage && (
+                              <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0', whiteSpace: 'pre-wrap' }}>
                                 <Latex>{q.passage}</Latex>
                               </div>
                             )}
@@ -372,6 +425,31 @@ export default function TestBankPage() {
                           </div>
                         ) : (
                           <>
+                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                              <input
+                                type="text"
+                                value={q.passageName || ''}
+                                onChange={(e) => {
+                                  const newQs = [...generatedQuestions];
+                                  newQs[idx].passageName = e.target.value;
+                                  setGeneratedQuestions(newQs);
+                                }}
+                                style={{ flex: 1, background: '#f8fafc', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '0.9rem', color: '#334155', border: '1px solid #cbd5e1' }}
+                                placeholder="Passage Name (Optional - e.g., 'The Everyday Life of Abraham Lincoln')"
+                              />
+                              <input
+                                type="number"
+                                value={q.passageStartLine === undefined ? '' : q.passageStartLine}
+                                onChange={(e) => {
+                                  const newQs = [...generatedQuestions];
+                                  newQs[idx].passageStartLine = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                                  setGeneratedQuestions(newQs);
+                                }}
+                                style={{ width: '150px', background: '#f8fafc', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '0.9rem', color: '#334155', border: '1px solid #cbd5e1' }}
+                                placeholder="Start Line (e.g., 1)"
+                              />
+                            </div>
+
                             <textarea
                               value={q.passage || ''}
                               onChange={(e) => {

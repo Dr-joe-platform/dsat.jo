@@ -15,8 +15,21 @@ interface PricingPlan {
   ctaStyle: 'primary' | 'secondary';
   popular: boolean;
   features: string[];
+  allowedModules?: string[]; // New field for access control
   order: number;
 }
+
+const AVAILABLE_MODULES = [
+  { id: '/dashboard/practice', label: 'Practice' },
+  { id: '/dashboard/ebooks', label: 'E-Books' },
+  { id: '/dashboard/mini-quizzes', label: 'Mini Quizzes' },
+  { id: '/dashboard/analytics', label: 'Analytics' },
+  { id: '/dashboard/study-plan', label: 'Study Plans' },
+  { id: '/dashboard/flashcards', label: 'Flashcards' },
+  { id: '/dashboard/vocabulary', label: 'Vocabulary' },
+  { id: '/dashboard/notes', label: 'Shared Notes' },
+  { id: '/dashboard/messages', label: 'Messages' }
+];
 
 export default function AdminPricingPage() {
   const [plans, setPlans] = useState<PricingPlan[]>([]);
@@ -257,7 +270,36 @@ function PlanEditor({ form, setForm, onSave, onCancel, saving, updateFeature, re
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+        <div style={{ marginBottom: '1.5rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
+          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#64748b', marginBottom: '0.75rem' }}>
+            System Access / Modules Allowed
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            {AVAILABLE_MODULES.map(mod => {
+              const checked = form.allowedModules?.includes(mod.id) || false;
+              return (
+                <label key={mod.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer', color: '#334155' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={checked} 
+                    onChange={e => {
+                      const current = form.allowedModules || [];
+                      if (e.target.checked) {
+                        setForm({ ...form, allowedModules: [...current, mod.id] });
+                      } else {
+                        setForm({ ...form, allowedModules: current.filter((id: string) => id !== mod.id) });
+                      }
+                    }} 
+                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                  />
+                  {mod.label}
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
         <button onClick={onCancel} style={{ padding: '0.625rem 1.25rem', background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '0.5rem', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer' }}>Cancel</button>
         <button onClick={onSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: '600', fontSize: '0.85rem', cursor: saving ? 'not-allowed' : 'pointer' }}>
           {saving ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={14} />} Save Plan
