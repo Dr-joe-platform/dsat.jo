@@ -81,8 +81,17 @@ export async function getAllAvailableQuestions(
           try {
             const parsed = JSON.parse(test.content);
             const testSubject = test.subject;
+            let currentPassage: string | undefined;
+            let currentPassageName: string | undefined;
+            let currentPassageStartLine: number | undefined;
 
             parsed.forEach((q: any) => {
+              if (q.passage) {
+                currentPassage = q.passage;
+                currentPassageName = q.passageName;
+                currentPassageStartLine = q.passageStartLine;
+              }
+
               // Only add if we haven't seen this ID and user has seen this question
               if (seenIds.has(q.id) || !seenQuestionIds.has(q.id)) return;
 
@@ -91,9 +100,9 @@ export async function getAllAvailableQuestions(
                 domain: q.domain || '',
                 skill: q.skill || 'General',
                 text: q.question || q.text || '',
-                passage: q.passage || undefined,
-                passageName: q.passageName || undefined,
-                passageStartLine: q.passageStartLine || undefined,
+                passage: q.passage || currentPassage || undefined,
+                passageName: q.passageName || currentPassageName || undefined,
+                passageStartLine: q.passageStartLine !== undefined ? q.passageStartLine : currentPassageStartLine,
                 options: q.options && q.options.length > 0 ? q.options : undefined,
                 correctAnswer: String(typeof q.correctAnswer === 'number' ? ['A','B','C','D'][q.correctAnswer] || q.correctAnswer : (q.answer !== undefined ? ['A','B','C','D'][q.answer] : (q.correctAnswer || 'A'))),
                 explanation: q.explanation,
