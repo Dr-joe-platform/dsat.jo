@@ -1115,7 +1115,7 @@ export default function TestPage() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f8f9fa', fontFamily: '"Georgia", "Times New Roman", serif', overflow: 'hidden' }}>
 
       {/* ── HEADER ── */}
-      <header style={{
+      <header className="test-header-content" style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0.75rem 2rem', flexShrink: 0,
         background: '#fff', borderBottom: '1px solid transparent'
@@ -1221,15 +1221,15 @@ export default function TestPage() {
       )}
 
       {/* ── QUESTION AREA ── */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: q.passage ? 'row' : 'column', alignItems: q.passage ? 'stretch' : 'center', overflow: 'hidden', background: '#fff' }}>
+      <main className="test-main-container" style={{ flex: 1, display: 'flex', flexDirection: q.passage ? 'row' : 'column', alignItems: q.passage ? 'stretch' : 'center', overflow: 'hidden', background: '#fff' }}>
         {q.passage && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: '2px solid #e2e8f0', overflowY: 'auto', fontSize: fsz, lineHeight: lh, fontFamily: 'Georgia, serif', color: '#1e293b', position: 'relative' }}>
+          <div className="test-passage-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: '2px solid #e2e8f0', overflowY: 'auto', fontSize: fsz, lineHeight: lh, fontFamily: 'Georgia, serif', color: '#1e293b', position: 'relative' }}>
              {q.passageName && (
                <div style={{ position: 'sticky', top: 0, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(4px)', zIndex: 10, padding: '1.5rem 3rem 1rem', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '1.1em', marginBottom: '1rem' }}>
                  <Latex delimiters={LATEX_DELIMITERS} strict={false}>{q.passageName}</Latex>
                </div>
              )}
-             <div style={{ padding: q.passageName ? '0 3rem 2rem' : '2rem 3rem', whiteSpace: 'pre-wrap' }}>
+             <div className="test-passage-content" style={{ padding: q.passageName ? '0 3rem 2rem' : '2rem 3rem', whiteSpace: 'pre-wrap' }}>
                <AnnotatableText
                  text={q.passage}
                passageStartLine={q.passageStartLine}
@@ -1248,7 +1248,7 @@ export default function TestPage() {
           </div>
         )}
 
-        <div style={{ flex: 1, width: q.passage ? 'auto' : '100%', maxWidth: q.passage ? 'none' : '800px', overflowY: 'auto', padding: '0', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
+        <div className="test-question-panel" style={{ flex: 1, width: q.passage ? 'auto' : '100%', maxWidth: q.passage ? 'none' : '800px', overflowY: 'auto', padding: '0', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
           
           <div style={{ background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0', borderBottom: '1px solid #cbd5e1', fontFamily: 'sans-serif' }}>
             <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -1273,7 +1273,7 @@ export default function TestPage() {
             </button>
           </div>
 
-          <div style={{ padding: '2rem 3rem', display: 'flex', flexDirection: 'column', alignItems: q.passage ? 'flex-start' : 'center' }}>
+          <div className="test-question-content" style={{ padding: '2rem 3rem', display: 'flex', flexDirection: 'column', alignItems: q.passage ? 'flex-start' : 'center' }}>
             <div style={{ width: '100%', maxWidth: '800px' }}>
               <div style={{ fontSize: fsz, lineHeight: lh, color: '#1e293b', marginBottom: '2rem' }}>
                 <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'Georgia, serif' }}>
@@ -1444,7 +1444,7 @@ export default function TestPage() {
         </div>
       </main>
 
-      <footer style={{
+      <footer className="test-footer-content" style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0.75rem 2rem', background: '#fff', borderTop: '2px solid #e2e8f0', flexShrink: 0
       }}>
@@ -1468,7 +1468,7 @@ export default function TestPage() {
           </button>
         </div>
 
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1rem' }}>
+        <div className="test-footer-buttons" style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1rem' }}>
           {isReviewMode && (
             <button
               onClick={() => setPhase('results')}

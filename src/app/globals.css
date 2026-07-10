@@ -1179,3 +1179,43 @@ input, textarea, select {
   }
 }
 
+
+
+/* Responsive Test Page Layout */
+@media (max-width: 1024px) {
+  .test-main-container {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+  }
+  .test-passage-panel {
+    border-right: none !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+    max-height: 50vh !important;
+    overflow-y: auto !important;
+  }
+  .test-passage-content {
+    padding: 1.5rem 1.5rem !important;
+  }
+  .test-question-panel {
+    max-width: 100% !important;
+  }
+  .test-question-content {
+    padding: 1.5rem 1.5rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .test-header-content {
+    padding: 0 1rem !important;
+  }
+  .test-footer-content {
+    padding: 1rem 1rem !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 1rem !important;
+  }
+  .test-footer-buttons {
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+}
